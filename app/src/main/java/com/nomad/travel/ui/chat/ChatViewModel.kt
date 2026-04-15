@@ -44,21 +44,46 @@ class ChatViewModel(
         responding.value = true
 
         viewModelScope.launch {
-            val reply = runCatching {
-                router.handle(
+            runCatching {
+                router.handleStream(
                     context = context,
                     turn = ToolRouter.Turn(
                         userText = text,
                         imageUri = image,
                         uiLanguage = Locale.getDefault().language
                     )
-                )
-            }.getOrElse { e ->
-                ToolRouter.Reply(visibleText = "⚠️ ${e.message ?: "error"}", toolTag = "error")
-            }
-
-            history.updateById(pendingMsg.id) {
-                it.copy(text = reply.visibleText, pending = false, toolTag = reply.toolTag)
+                ).collect { evt ->
+                    when (evt) {
+                        is ToolRouter.StreamEvent.Delta -> {
+                            history.updateById(pendingMsg.id) {
+                                it.copy(
+                                    text = evt.text,
+                                    pending = false,
+                                    streaming = true
+                                )
+                            }
+                        }
+                        is ToolRouter.StreamEvent.Complete -> {
+                            history.updateById(pendingMsg.id) {
+                                it.copy(
+                                    text = evt.text,
+                                    pending = false,
+                                    streaming = false,
+                                    toolTag = evt.toolTag
+                                )
+                            }
+                        }
+                    }
+                }
+            }.onFailure { e ->
+                history.updateById(pendingMsg.id) {
+                    it.copy(
+                        text = "⚠️ ${e.message ?: "error"}",
+                        pending = false,
+                        streaming = false,
+                        toolTag = "error"
+                    )
+                }
             }
             responding.value = false
         }

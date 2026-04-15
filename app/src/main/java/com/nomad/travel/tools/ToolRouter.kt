@@ -7,6 +7,8 @@ import com.nomad.travel.data.expense.Expense
 import com.nomad.travel.data.expense.ExpenseRepository
 import com.nomad.travel.llm.GemmaEngine
 import com.nomad.travel.ocr.OcrService
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class ToolRouter(
     private val gemma: GemmaEngine,
@@ -25,6 +27,11 @@ class ToolRouter(
         val visibleText: String,
         val toolTag: String? = null
     )
+
+    sealed interface StreamEvent {
+        data class Delta(val text: String) : StreamEvent
+        data class Complete(val text: String, val toolTag: String?) : StreamEvent
+    }
 
     suspend fun handle(context: Context, turn: Turn): Reply {
         if (!gemma.ensureLoaded()) {
@@ -60,6 +67,49 @@ class ToolRouter(
 
         val (visible, executed) = postProcess(raw)
         return Reply(visibleText = visible.ifBlank { raw }, toolTag = executed ?: tag)
+    }
+
+    fun handleStream(context: Context, turn: Turn): Flow<StreamEvent> = flow {
+        if (!gemma.ensureLoaded()) {
+            emit(StreamEvent.Complete(FALLBACK_NO_MODEL, "error"))
+            return@flow
+        }
+
+        val ocrBlock: String? = turn.imageUri?.let { uri ->
+            runCatching { ocr.recognize(context, uri) }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+        }
+
+        val baseTag = when {
+            ocrBlock != null -> "menu_translate"
+            looksLikeExpense(turn.userText) -> "expense"
+            looksLikeMenuSearch(turn.userText) -> "menu_search"
+            else -> "travel"
+        }
+
+        val customPrompt = prefs.systemPromptBlocking()?.takeIf { it.isNotBlank() }
+        val built = Prompt.build(
+            uiLanguage = turn.uiLanguage,
+            userText = turn.userText,
+            ocrBlock = ocrBlock,
+            customSystemPrompt = customPrompt
+        )
+
+        var lastCumulative = ""
+        gemma.generateStream(built.systemInstruction, built.userMessage).collect { cumulative ->
+            lastCumulative = cumulative
+            val cleaned = EXPENSE_TAG.replace(cumulative, "").trimEnd()
+            emit(StreamEvent.Delta(cleaned))
+        }
+
+        val (visible, executed) = postProcess(lastCumulative)
+        emit(
+            StreamEvent.Complete(
+                text = visible.ifBlank { lastCumulative },
+                toolTag = executed ?: baseTag
+            )
+        )
     }
 
     private suspend fun postProcess(raw: String): Pair<String, String?> {

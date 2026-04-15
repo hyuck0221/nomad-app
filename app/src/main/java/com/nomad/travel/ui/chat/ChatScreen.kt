@@ -383,8 +383,9 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
             .background(bg)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
+        val displayText = if (msg.streaming) msg.text + "▍" else msg.text
         Text(
-            text = msg.text,
+            text = displayText,
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = textColor,
                 fontSize = 15.sp,

@@ -11,6 +11,7 @@ data class ChatMessage(
     val text: String,
     val imageUri: Uri? = null,
     val pending: Boolean = false,
+    val streaming: Boolean = false,
     val toolTag: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )

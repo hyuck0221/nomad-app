@@ -10,6 +10,9 @@ import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Message
 import com.nomad.travel.data.UserPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -110,6 +113,34 @@ class GemmaEngine(
                 runCatching { conversation.close() }
             }
         }
+
+    /**
+     * Streams cumulative assistant text as LiteRT-LM produces tokens.
+     * Each emitted string is the full text so far (not a delta).
+     */
+    fun generateStream(
+        systemInstruction: String,
+        userMessage: String
+    ): Flow<String> = flow {
+        val e = requireNotNull(engine) { "Model not loaded — call ensureLoaded()" }
+        val convConfig = ConversationConfig(
+            systemInstruction = Contents.of(systemInstruction)
+        )
+        val conversation = e.createConversation(convConfig)
+        try {
+            var acc = ""
+            conversation.sendMessageAsync(userMessage).collect { msg ->
+                val chunk = extractText(msg)
+                // LiteRT-LM emits deltas; if a cumulative build ever arrives
+                // (chunk already contains the accumulator), don't double it.
+                acc = if (chunk.startsWith(acc) && chunk.length >= acc.length) chunk
+                else acc + chunk
+                emit(acc)
+            }
+        } finally {
+            runCatching { conversation.close() }
+        }
+    }.flowOn(Dispatchers.IO)
 
     fun close() {
         runCatching { engine?.close() }
