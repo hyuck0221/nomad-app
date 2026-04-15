@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">ノマド</string>
+    <string name="chat_hint">メニューを撮影、観光地を検索、支出を管理 — 何でも聞いてください</string>
+    <string name="send">送信</string>
+    <string name="camera">カメラ</string>
+    <string name="gallery">ギャラリー</string>
+    <string name="thinking">考え中…</string>
+    <string name="model_loading">オンデバイスモデルを読み込み中…</string>
+    <string name="model_missing">Gemma モデルファイルが必要です。設定から追加してください。</string>
+    <string name="permission_camera_denied">カメラの権限が必要です</string>
+    <string name="ocr_empty">画像から文字を検出できませんでした</string>
+    <string name="tool_menu_translate">メニュー翻訳</string>
+    <string name="tool_menu_search">メニュー検索</string>
+    <string name="tool_expense">支出管理</string>
+    <string name="tool_travel">旅行情報</string>
+</resources>

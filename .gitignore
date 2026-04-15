@@ -1,0 +1,38 @@
+# ─── Build outputs ─────────────────────────────────────────
+.gradle/
+/build/
+/app/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+/.kotlin/
+
+# ─── Local config ──────────────────────────────────────────
+/local.properties
+*.local.properties
+
+# ─── IDE ───────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# ─── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Tooling metadata ──────────────────────────────────────
+.claude/
+.omc/
+
+# ─── Model files (too large for git; push to device via adb) ─
+/model/
+*.litertlm
+*.task
+app/src/main/assets/*.bin
+app/src/main/assets/*.tflite
+
+# ─── Reference / design source assets in project root ─────
+# (launcher icon and in-app avatars are copied into app/src/main/res/)
+/*.png
+!/.reference-placeholder

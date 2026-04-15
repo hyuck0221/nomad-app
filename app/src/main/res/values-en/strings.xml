@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Nomad</string>
+    <string name="chat_hint">Snap a menu, find places, track spending — ask me anything</string>
+    <string name="send">Send</string>
+    <string name="camera">Camera</string>
+    <string name="gallery">Gallery</string>
+    <string name="thinking">Thinking…</string>
+    <string name="model_loading">Loading on-device model…</string>
+    <string name="model_missing">Gemma model file required. Please add it in Settings.</string>
+    <string name="permission_camera_denied">Camera permission is required</string>
+    <string name="ocr_empty">No text detected in the image</string>
+    <string name="tool_menu_translate">Menu Translate</string>
+    <string name="tool_menu_search">Menu Search</string>
+    <string name="tool_expense">Expense</string>
+    <string name="tool_travel">Travel Info</string>
+</resources>
