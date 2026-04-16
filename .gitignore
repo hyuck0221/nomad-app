@@ -25,6 +25,10 @@ Thumbs.db
 .claude/
 .omc/
 
+# ─── Signing ───────────────────────────────────────────────
+*.keystore
+*.jks
+
 # ─── Model files (too large for git; push to device via adb) ─
 /model/
 *.litertlm

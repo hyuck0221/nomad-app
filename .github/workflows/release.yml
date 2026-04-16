@@ -1,15 +1,22 @@
 # Tag-triggered release — push a tag like `v0.2.0` to build & publish the APK.
 #
 # Required GitHub Secrets (Settings → Secrets and variables → Actions):
-#   SIGNING_KEYSTORE_BASE64   base64-encoded release keystore
+#   SIGNING_KEYSTORE_BASE64   base64-encoded release keystore (no line breaks)
 #   SIGNING_KEYSTORE_PASSWORD keystore password
 #   SIGNING_KEY_ALIAS         key alias
 #   SIGNING_KEY_PASSWORD      key password
 #
-# Generate a keystore once:
+# Generate a keystore once (macOS/Linux):
 #   keytool -genkeypair -v -keystore release.keystore -alias nomad \
-#     -keyalg RSA -keysize 2048 -validity 10000
-#   base64 -i release.keystore | pbcopy   # → paste into SIGNING_KEYSTORE_BASE64
+#     -keyalg RSA -keysize 2048 -validity 10000 -storetype PKCS12
+#
+# Encode for GitHub Secrets:
+#   base64 < release.keystore | tr -d '\n'    # copy the single-line output
+#
+# Verify it round-trips correctly before pasting:
+#   base64 < release.keystore | tr -d '\n' | base64 -d | md5sum
+#   md5sum release.keystore
+#   (both should match)
 
 name: Release
 
@@ -44,8 +51,13 @@ jobs:
           echo "Building version $VERSION (tag $TAG, run ${{ github.run_number }})"
 
       - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "Keystore size: $(stat -c%s "$RUNNER_TEMP/release.keystore") bytes"
+          keytool -list -keystore "$RUNNER_TEMP/release.keystore" \
+            -storepass "${{ secrets.SIGNING_KEYSTORE_PASSWORD }}" -storetype PKCS12 2>&1 | head -5
 
       - name: Build release APK
         env:
