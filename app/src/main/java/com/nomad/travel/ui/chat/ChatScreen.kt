@@ -58,7 +58,12 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Translate
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -125,6 +130,10 @@ import java.io.File
 fun ChatScreen(
     onOpenSettings: () -> Unit = {},
     onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
+    onOpenTranslate: () -> Unit = {},
+    onOpenInterpret: () -> Unit = {},
+    onOpenTranslateWithLangs: (String, String) -> Unit = { _, _ -> },
+    onOpenInterpretWithLangs: (String, String) -> Unit = { _, _ -> },
     vm: ChatViewModel = viewModel(factory = ChatViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -155,6 +164,15 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     var pendingDeleteSessionId by remember { mutableStateOf<Long?>(null) }
     var sendTick by remember { mutableStateOf(0) }
+    var showTranslateSheet by remember { mutableStateOf(false) }
+
+    // STT: wire mic results to input field
+    vm.onSttResult = { text -> input = text }
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) vm.startListening()
+    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -188,6 +206,15 @@ fun ChatScreen(
             onClearPendingImage = { pendingImage = null },
             onOpenSettings = onOpenSettings,
             onOpenDrawer = { scope.launch { drawerState.open() } },
+            onOpenTranslate = { showTranslateSheet = true },
+            onResolveTranslate = { call ->
+                vm.dismissPending()
+                onOpenTranslateWithLangs(call.src, call.tgt)
+            },
+            onResolveInterpret = { call ->
+                vm.dismissPending()
+                onOpenInterpretWithLangs(call.src, call.tgt)
+            },
             onSend = {
                 vm.send(context, input, pendingImage)
                 input = ""
@@ -201,6 +228,16 @@ fun ChatScreen(
             onDismissPending = { vm.dismissPending() },
             onStartUpdate = { vm.startUpdate() },
             onSkipUpdate = { vm.skipUpdate() },
+            onMic = {
+                if (state.isListening) {
+                    vm.stopListening()
+                } else {
+                    val granted = context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) ==
+                        PackageManager.PERMISSION_GRANTED
+                    if (granted) vm.startListening()
+                    else micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                }
+            },
             onCamera = {
                 val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
                     PackageManager.PERMISSION_GRANTED
@@ -246,6 +283,21 @@ fun ChatScreen(
             textContentColor = NomadMist
         )
     }
+
+    // Translate mode picker sheet
+    if (showTranslateSheet) {
+        TranslateModeSheet(
+            onDismiss = { showTranslateSheet = false },
+            onTranslate = {
+                showTranslateSheet = false
+                onOpenTranslate()
+            },
+            onInterpret = {
+                showTranslateSheet = false
+                onOpenInterpret()
+            }
+        )
+    }
 }
 
 @Composable
@@ -258,10 +310,14 @@ private fun ChatScreenBody(
     onClearPendingImage: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDrawer: () -> Unit,
+    onOpenTranslate: () -> Unit,
+    onResolveTranslate: (com.nomad.travel.tools.ToolTags.TranslateCall) -> Unit,
+    onResolveInterpret: (com.nomad.travel.tools.ToolTags.InterpretCall) -> Unit,
     onSend: () -> Unit,
     onCancel: () -> Unit,
     onCamera: () -> Unit,
     onGallery: () -> Unit,
+    onMic: () -> Unit,
     onOpenMenuView: (Uri, String) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
@@ -275,7 +331,7 @@ private fun ChatScreenBody(
             .statusBarsPadding()
             .imePadding()
     ) {
-        ChatTopBar(onOpenDrawer = onOpenDrawer, onOpenSettings = onOpenSettings)
+        ChatTopBar(onOpenDrawer = onOpenDrawer, onOpenTranslate = onOpenTranslate, onOpenSettings = onOpenSettings)
 
         val listState = rememberLazyListState()
         var autoScroll by remember { mutableStateOf(true) }
@@ -422,6 +478,8 @@ private fun ChatScreenBody(
             pending = state.pending,
             onResolveCurrency = onResolveCurrency,
             onResolveAsk = onResolveAsk,
+            onResolveTranslate = onResolveTranslate,
+            onResolveInterpret = onResolveInterpret,
             onDismiss = onDismissPending
         )
 
@@ -434,9 +492,11 @@ private fun ChatScreenBody(
             input = input,
             onInputChange = onInputChange,
             isResponding = state.isResponding,
+            isListening = state.isListening,
             canSend = input.isNotBlank() || pendingImage != null,
             onCamera = onCamera,
             onGallery = onGallery,
+            onMic = onMic,
             onSend = onSend,
             onCancel = onCancel
         )
@@ -536,7 +596,7 @@ private fun SessionDrawerContent(
 }
 
 @Composable
-private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenSettings: () -> Unit) {
+private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenTranslate: () -> Unit, onOpenSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -579,6 +639,22 @@ private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenSettings: () -> Unit) {
                 )
             }
         }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable(onClick = onOpenTranslate),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Translate,
+                contentDescription = stringResource(R.string.translate_title),
+                tint = NomadMist,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.size(8.dp))
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -1044,86 +1120,159 @@ private fun InputBar(
     input: String,
     onInputChange: (String) -> Unit,
     isResponding: Boolean,
+    isListening: Boolean,
     canSend: Boolean,
     onCamera: () -> Unit,
     onGallery: () -> Unit,
+    onMic: () -> Unit,
     onSend: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Row(
+    var showAttachMenu by remember { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+    ) {
+        // Attach menu popup
+        AnimatedVisibility(
+            visible = showAttachMenu,
+            enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+            exit = shrinkVertically(tween(150)) + fadeOut(tween(150))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                AttachOptionButton(
+                    icon = { Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(20.dp)) },
+                    label = stringResource(R.string.camera),
+                    onClick = {
+                        showAttachMenu = false
+                        onCamera()
+                    }
+                )
+                AttachOptionButton(
+                    icon = { Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(20.dp)) },
+                    label = stringResource(R.string.gallery),
+                    onClick = {
+                        showAttachMenu = false
+                        onGallery()
+                    }
+                )
+            }
+        }
+
+        // Main input row
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // + button (hamburger for attachments)
+            CircleIconButton(onClick = { showAttachMenu = !showAttachMenu }) {
+                Icon(
+                    imageVector = if (showAttachMenu) Icons.Default.Close else Icons.Default.Add,
+                    contentDescription = null,
+                    tint = NomadMist,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Text field
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(NomadInputField)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                if (input.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.chat_input_placeholder),
+                        style = LocalTextStyle.current.copy(
+                            color = NomadMuted,
+                            fontSize = 15.sp
+                        )
+                    )
+                }
+                BasicTextField(
+                    value = input,
+                    onValueChange = onInputChange,
+                    textStyle = TextStyle(color = NomadSilver, fontSize = 15.sp),
+                    cursorBrush = SolidColor(NomadGlow),
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            // Mic button
+            CircleIconButton(onClick = onMic) {
+                Icon(
+                    imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                    contentDescription = stringResource(R.string.translate_mic),
+                    tint = if (isListening) NomadGlow else NomadMist,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Send / Cancel button
+            val active = isResponding || canSend
+            val bgBrush = if (active) {
+                Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
+            } else {
+                SolidColor(Color.White.copy(alpha = 0.1f))
+            }
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(bgBrush)
+                    .clickable(enabled = active) {
+                        if (isResponding) onCancel() else onSend()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isResponding) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
+                    contentDescription = stringResource(R.string.send),
+                    tint = if (active) NomadSilver else NomadMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AttachOptionButton(
+    icon: @Composable () -> Unit,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(NomadInputField)
+            .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CircleIconButton(onCamera) {
-            Icon(
-                Icons.Default.PhotoCamera,
-                contentDescription = stringResource(R.string.camera),
-                tint = NomadMist,
-                modifier = Modifier.size(20.dp)
+        icon()
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = NomadSilver,
+                fontWeight = FontWeight.Medium
             )
-        }
-        CircleIconButton(onGallery) {
-            Icon(
-                Icons.Default.PhotoLibrary,
-                contentDescription = stringResource(R.string.gallery),
-                tint = NomadMist,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(NomadInputField)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
-            if (input.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.chat_input_placeholder),
-                    style = LocalTextStyle.current.copy(
-                        color = NomadMuted,
-                        fontSize = 15.sp
-                    )
-                )
-            }
-            BasicTextField(
-                value = input,
-                onValueChange = onInputChange,
-                textStyle = TextStyle(color = NomadSilver, fontSize = 15.sp),
-                cursorBrush = SolidColor(NomadGlow),
-                maxLines = 4,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        val active = isResponding || canSend
-        val bgBrush = if (active) {
-            Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
-        } else {
-            SolidColor(Color.White.copy(alpha = 0.1f))
-        }
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .background(bgBrush)
-                .clickable(enabled = active) {
-                    if (isResponding) onCancel() else onSend()
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (isResponding) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
-                contentDescription = stringResource(R.string.send),
-                tint = if (active) NomadSilver else NomadMuted,
-                modifier = Modifier.size(18.dp)
-            )
-        }
+        )
     }
 }
 
@@ -1148,6 +1297,8 @@ private fun toolTagLabel(tag: String): String? = when (tag) {
         stringResource(R.string.tool_label_currency)
     "ask" -> stringResource(R.string.tool_label_ask)
     "chat", "travel", "menu_search" -> stringResource(R.string.tool_label_chat)
+    "translate" -> stringResource(R.string.tool_label_translate)
+    "interpret" -> stringResource(R.string.tool_label_interpret)
     else -> null
 }
 
@@ -1156,6 +1307,8 @@ private fun PendingActionCard(
     pending: PendingAction?,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
+    onResolveTranslate: (com.nomad.travel.tools.ToolTags.TranslateCall) -> Unit,
+    onResolveInterpret: (com.nomad.travel.tools.ToolTags.InterpretCall) -> Unit,
     onDismiss: () -> Unit
 ) {
     AnimatedVisibility(visible = pending != null) {
@@ -1182,6 +1335,16 @@ private fun PendingActionCard(
                 pending.ask != null -> AskChoiceContent(
                     call = pending.ask,
                     onPick = onResolveAsk,
+                    onDismiss = onDismiss
+                )
+                pending.translate != null -> TranslateActionContent(
+                    call = pending.translate,
+                    onGo = { onResolveTranslate(pending.translate) },
+                    onDismiss = onDismiss
+                )
+                pending.interpret != null -> InterpretActionContent(
+                    call = pending.interpret,
+                    onGo = { onResolveInterpret(pending.interpret) },
                     onDismiss = onDismiss
                 )
             }
@@ -1430,6 +1593,78 @@ private fun UpdateFloatingCard(
     }
 }
 
+@Composable
+private fun TranslateActionContent(
+    call: com.nomad.travel.tools.ToolTags.TranslateCall,
+    onGo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Translate, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(R.string.translate_action_title),
+            style = MaterialTheme.typography.labelLarge.copy(color = NomadSilver),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Close, contentDescription = null, tint = NomadMuted, modifier = Modifier.size(14.dp))
+        }
+    }
+    Spacer(Modifier.size(4.dp))
+    Text(
+        text = "${call.src.uppercase()} → ${call.tgt.uppercase()}",
+        style = MaterialTheme.typography.bodyMedium.copy(color = NomadMist)
+    )
+    Spacer(Modifier.size(10.dp))
+    ChoiceButton(
+        label = stringResource(R.string.translate_action_go),
+        primary = true,
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onGo
+    )
+}
+
+@Composable
+private fun InterpretActionContent(
+    call: com.nomad.travel.tools.ToolTags.InterpretCall,
+    onGo: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Default.Group, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(R.string.interpret_action_title),
+            style = MaterialTheme.typography.labelLarge.copy(color = NomadSilver),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier.size(24.dp).clip(CircleShape).clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Default.Close, contentDescription = null, tint = NomadMuted, modifier = Modifier.size(14.dp))
+        }
+    }
+    Spacer(Modifier.size(4.dp))
+    Text(
+        text = "${call.src.uppercase()} ⇄ ${call.tgt.uppercase()}",
+        style = MaterialTheme.typography.bodyMedium.copy(color = NomadMist)
+    )
+    Spacer(Modifier.size(10.dp))
+    ChoiceButton(
+        label = stringResource(R.string.interpret_action_go),
+        primary = true,
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onGo
+    )
+}
+
 private fun createTempImageUri(context: Context): Uri {
     val dir = context.cacheDir
     val file = File.createTempFile("capture_", ".jpg", dir)
@@ -1438,4 +1673,113 @@ private fun createTempImageUri(context: Context): Uri {
         "${context.packageName}.fileprovider",
         file
     )
+}
+
+/* ── Translate mode picker sheet ── */
+
+@Composable
+private fun TranslateModeSheet(
+    onDismiss: () -> Unit,
+    onTranslate: () -> Unit,
+    onInterpret: () -> Unit
+) {
+    // Scrim
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(onClick = onDismiss)
+    )
+    // Sheet
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(NomadInputField)
+                .clickable(enabled = false) {} // block scrim clicks
+                .padding(horizontal = 20.dp, vertical = 24.dp)
+        ) {
+            // Handle
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 40.dp, height = 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(NomadMuted.copy(alpha = 0.5f))
+            )
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                text = stringResource(R.string.translate_sheet_title),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = NomadSilver,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+            Spacer(Modifier.height(16.dp))
+
+            // Mode 1: Text translate
+            TranslateModeCard(
+                icon = { Icon(Icons.Default.TextFields, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(28.dp)) },
+                title = stringResource(R.string.translate_mode_text_title),
+                desc = stringResource(R.string.translate_mode_text_desc),
+                onClick = onTranslate
+            )
+            Spacer(Modifier.height(10.dp))
+
+            // Mode 2: Interpret
+            TranslateModeCard(
+                icon = { Icon(Icons.Default.Group, contentDescription = null, tint = NomadGlow, modifier = Modifier.size(28.dp)) },
+                title = stringResource(R.string.translate_mode_interpret_title),
+                desc = stringResource(R.string.translate_mode_interpret_desc),
+                onClick = onInterpret
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun TranslateModeCard(
+    icon: @Composable () -> Unit,
+    title: String,
+    desc: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(NomadRoyal.copy(alpha = 0.2f)),
+            contentAlignment = Alignment.Center
+        ) { icon() }
+        Spacer(Modifier.size(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = NomadSilver,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+            Text(
+                text = desc,
+                style = MaterialTheme.typography.bodySmall.copy(color = NomadMist)
+            )
+        }
+    }
 }

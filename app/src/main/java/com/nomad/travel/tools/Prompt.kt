@@ -49,9 +49,17 @@ object Prompt {
             "to proceed (and no sensible default exists), append: " +
             "<ASK prompt=\"SHORT QUESTION\" options=\"option one|option two|option three\">. Use sparingly. " +
             "The app renders the options as tappable chips and feeds the chosen one back as the next turn.\n" +
-            "STRICT: the ONLY tags you may ever emit are <EXPENSE>, <CURRENCY>, and <ASK>. " +
+            "4) TRANSLATE — when the user wants to translate text or asks about translation, " +
+            "append: <TRANSLATE src=\"LANG_CODE\" tgt=\"LANG_CODE\">. " +
+            "Use 2-letter language codes (ko, en, ja, zh, es, fr, de, ...). " +
+            "Example: user says \"영어로 번역하고 싶어\" → <TRANSLATE src=\"ko\" tgt=\"en\">.\n" +
+            "5) INTERPRET — when the user wants real-time face-to-face interpretation or " +
+            "conversation with someone speaking another language, " +
+            "append: <INTERPRET src=\"LANG_CODE\" tgt=\"LANG_CODE\">. " +
+            "Example: user says \"일본인과 대화해야 해\" → <INTERPRET src=\"ko\" tgt=\"ja\">.\n" +
+            "STRICT: the ONLY tags you may ever emit are <EXPENSE>, <CURRENCY>, <ASK>, <TRANSLATE>, and <INTERPRET>. " +
             "Never write any other XML/HTML-like tag in your reply — no <TEXT>, <END>, <RESPONSE>, " +
-            "<ANSWER>, <OUTPUT>, <THINK>, or closing tags of any kind. Plain prose only, outside the three tool tags above.\n" +
+            "<ANSWER>, <OUTPUT>, <THINK>, or closing tags of any kind. Plain prose only, outside the five tool tags above.\n" +
             "For menu OCR, list each item with: original · translation · 1-line description."
 
     private const val MID_CONVERSATION_RULE =

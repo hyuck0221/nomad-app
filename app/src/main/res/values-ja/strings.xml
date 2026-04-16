@@ -111,4 +111,32 @@
     <string name="settings_context_reset_body">上限を超えると以前のコンテキストをすべてクリアし、現在のメッセージのみ使用します。</string>
     <string name="settings_context_compact">要約して保持</string>
     <string name="settings_context_compact_body">古い会話を短い要約に圧縮します。追加の計算が必要です。</string>
+
+    <!-- Translate / Interpret -->
+    <string name="translate_title">翻訳</string>
+    <string name="translate_sheet_title">翻訳モードを選択</string>
+    <string name="translate_mode_text_title">テキスト翻訳</string>
+    <string name="translate_mode_text_desc">入力したテキストを翻訳します</string>
+    <string name="translate_mode_interpret_title">対面通訳</string>
+    <string name="translate_mode_interpret_desc">相手と対面で会話する時に使います</string>
+    <string name="translate_input_hint">翻訳するテキストを入力</string>
+    <string name="translate_result_hint">翻訳結果がここに表示されます</string>
+    <string name="translate_action">翻訳</string>
+    <string name="translate_swap">言語を入れ替え</string>
+    <string name="translate_mic">音声入力</string>
+    <string name="translate_clear">クリア</string>
+    <string name="translate_copy">コピー</string>
+    <string name="translate_copied">クリップボードにコピーしました</string>
+    <string name="translate_fullscreen">全画面表示</string>
+    <string name="interpret_title">対面通訳</string>
+    <string name="interpret_clear">会話をクリア</string>
+    <string name="interpret_empty_me">相手がマイクで話すと、\n翻訳がここに表示されます</string>
+    <string name="interpret_empty_partner">下にテキストを入力すると、\n翻訳がここに表示されます</string>
+    <string name="interpret_input_hint">%1$sで入力</string>
+    <string name="translate_action_title">翻訳モードへ</string>
+    <string name="translate_action_go">翻訳画面を開く</string>
+    <string name="interpret_action_title">通訳モードへ</string>
+    <string name="interpret_action_go">通訳画面を開く</string>
+    <string name="tool_label_translate">· 翻訳</string>
+    <string name="tool_label_interpret">· 通訳</string>
 </resources>

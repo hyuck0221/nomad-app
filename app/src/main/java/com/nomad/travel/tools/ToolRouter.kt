@@ -32,7 +32,9 @@ class ToolRouter(
             val text: String,
             val toolTag: String?,
             val currency: ToolTags.CurrencyCall? = null,
-            val ask: ToolTags.AskCall? = null
+            val ask: ToolTags.AskCall? = null,
+            val translate: ToolTags.TranslateCall? = null,
+            val interpret: ToolTags.InterpretCall? = null
         ) : StreamEvent
     }
 
@@ -90,7 +92,9 @@ class ToolRouter(
                 text = post.visibleText.ifBlank { ToolTags.stripAll(lastCumulative) },
                 toolTag = finalTag,
                 currency = if (suppressTools) null else post.currency,
-                ask = if (suppressTools) null else post.ask
+                ask = if (suppressTools) null else post.ask,
+                translate = if (suppressTools) null else post.translate,
+                interpret = if (suppressTools) null else post.interpret
             )
         )
     }
@@ -136,7 +140,9 @@ class ToolRouter(
         val visibleText: String,
         val toolTag: String?,
         val currency: ToolTags.CurrencyCall?,
-        val ask: ToolTags.AskCall?
+        val ask: ToolTags.AskCall?,
+        val translate: ToolTags.TranslateCall? = null,
+        val interpret: ToolTags.InterpretCall? = null
     )
 
     private suspend fun postProcess(raw: String): PostResult {
@@ -167,11 +173,19 @@ class ToolRouter(
         val ask = ToolTags.extractAsk(raw)
         if (ask != null) tag = "ask"
 
+        val translate = ToolTags.extractTranslate(raw)
+        if (translate != null) tag = "translate"
+
+        val interpret = ToolTags.extractInterpret(raw)
+        if (interpret != null) tag = "interpret"
+
         return PostResult(
             visibleText = ToolTags.stripAll(raw),
             toolTag = tag,
             currency = currency,
-            ask = ask
+            ask = ask,
+            translate = translate,
+            interpret = interpret
         )
     }
 

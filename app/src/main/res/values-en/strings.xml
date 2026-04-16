@@ -111,4 +111,32 @@
     <string name="settings_context_reset_body">When the limit is reached, all previous context is cleared and only the current message is used.</string>
     <string name="settings_context_compact">Compact summary</string>
     <string name="settings_context_compact_body">Older turns are compressed into a short summary. Uses extra compute.</string>
+
+    <!-- Translate / Interpret -->
+    <string name="translate_title">Translate</string>
+    <string name="translate_sheet_title">Choose translation mode</string>
+    <string name="translate_mode_text_title">Text Translation</string>
+    <string name="translate_mode_text_desc">Translate the text you type</string>
+    <string name="translate_mode_interpret_title">Face-to-Face</string>
+    <string name="translate_mode_interpret_desc">Use when talking to someone in person</string>
+    <string name="translate_input_hint">Enter text to translate</string>
+    <string name="translate_result_hint">Translation will appear here</string>
+    <string name="translate_action">Translate</string>
+    <string name="translate_swap">Swap languages</string>
+    <string name="translate_mic">Voice input</string>
+    <string name="translate_clear">Clear</string>
+    <string name="translate_copy">Copy</string>
+    <string name="translate_copied">Copied to clipboard</string>
+    <string name="translate_fullscreen">Full screen</string>
+    <string name="interpret_title">Face-to-Face</string>
+    <string name="interpret_clear">Clear conversation</string>
+    <string name="interpret_empty_me">When they speak into the mic,\nthe translation will appear here</string>
+    <string name="interpret_empty_partner">Type below and the translation\nwill appear here</string>
+    <string name="interpret_input_hint">Type in %1$s</string>
+    <string name="translate_action_title">Go to Translation</string>
+    <string name="translate_action_go">Open translator</string>
+    <string name="interpret_action_title">Go to Interpretation</string>
+    <string name="interpret_action_go">Open interpreter</string>
+    <string name="tool_label_translate">· Translation</string>
+    <string name="tool_label_interpret">· Interpretation</string>
 </resources>

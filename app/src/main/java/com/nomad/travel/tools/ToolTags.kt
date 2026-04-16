@@ -10,6 +10,8 @@ object ToolTags {
     private val ATTR = Regex("(\\w+)=\"([^\"]*)\"")
     private val CURRENCY = Regex("<CURRENCY\\b[^>]*>")
     private val ASK = Regex("<ASK\\b[^>]*>")
+    private val TRANSLATE = Regex("<TRANSLATE\\b[^>]*>")
+    private val INTERPRET = Regex("<INTERPRET\\b[^>]*>")
 
     // Strip ANY XML-ish tag starting with an uppercase letter (EXPENSE, CURRENCY,
     // ASK, and also hallucinated tags like TEXT, END, RESPONSE that the model
@@ -28,6 +30,9 @@ object ToolTags {
         val prompt: String,
         val options: List<String>
     )
+
+    data class TranslateCall(val src: String, val tgt: String)
+    data class InterpretCall(val src: String, val tgt: String)
 
     fun parseAttrs(tag: String): Map<String, String> {
         val out = mutableMapOf<String, String>()
@@ -54,6 +59,22 @@ object ToolTags {
         if (opts.size < 2) return null
         val id = a["id"].orEmpty().ifBlank { "ask_${System.currentTimeMillis()}" }
         return AskCall(id, prompt, opts)
+    }
+
+    fun extractTranslate(raw: String): TranslateCall? {
+        val match = TRANSLATE.find(raw) ?: return null
+        val a = parseAttrs(match.value)
+        val src = a["src"]?.takeIf { it.isNotBlank() }?.lowercase() ?: return null
+        val tgt = a["tgt"]?.takeIf { it.isNotBlank() }?.lowercase() ?: return null
+        return TranslateCall(src, tgt)
+    }
+
+    fun extractInterpret(raw: String): InterpretCall? {
+        val match = INTERPRET.find(raw) ?: return null
+        val a = parseAttrs(match.value)
+        val src = a["src"]?.takeIf { it.isNotBlank() }?.lowercase() ?: return null
+        val tgt = a["tgt"]?.takeIf { it.isNotBlank() }?.lowercase() ?: return null
+        return InterpretCall(src, tgt)
     }
 
     /** Remove any uppercase-named XML-ish tag (final pass). */

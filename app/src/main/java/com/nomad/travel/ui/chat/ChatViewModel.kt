@@ -1,7 +1,13 @@
 package com.nomad.travel.ui.chat
 
+import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -37,7 +43,9 @@ import java.util.Locale
 
 data class PendingAction(
     val currency: ToolTags.CurrencyCall? = null,
-    val ask: ToolTags.AskCall? = null
+    val ask: ToolTags.AskCall? = null,
+    val translate: ToolTags.TranslateCall? = null,
+    val interpret: ToolTags.InterpretCall? = null
 )
 
 sealed interface UpdateBannerState {
@@ -52,6 +60,7 @@ data class ChatUiState(
     val currentSessionId: Long? = null,
     val messages: List<ChatMessage> = emptyList(),
     val isResponding: Boolean = false,
+    val isListening: Boolean = false,
     val pending: PendingAction? = null,
     val updateBanner: UpdateBannerState = UpdateBannerState.Hidden
 )
@@ -62,16 +71,19 @@ class ChatViewModel(
     private val repo: ChatRepository,
     private val prefs: UserPrefs,
     private val currencyService: CurrencyService,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val app: Application
 ) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<Long?>(null)
     private val responding = MutableStateFlow(false)
+    private val listening = MutableStateFlow(false)
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
     private val pending = MutableStateFlow<PendingAction?>(null)
     private val updateBanner = MutableStateFlow<UpdateBannerState>(UpdateBannerState.Hidden)
     private var streamJob: Job? = null
+    private var speechRecognizer: SpeechRecognizer? = null
 
     private val persistedMessages = currentSessionId.flatMapLatest { id ->
         if (id == null) flowOf(emptyList()) else repo.observeMessages(id)
@@ -94,8 +106,9 @@ class ChatViewModel(
             )
         },
         pending,
-        updateBanner
-    ) { base, p, banner -> base.copy(pending = p, updateBanner = banner) }
+        updateBanner,
+        listening
+    ) { base, p, banner, listen -> base.copy(pending = p, updateBanner = banner, isListening = listen) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
 
     init {
@@ -203,6 +216,10 @@ class ChatViewModel(
                                 pending.value = PendingAction(currency = evt.currency)
                             } else if (evt.ask != null) {
                                 pending.value = PendingAction(ask = evt.ask)
+                            } else if (evt.translate != null) {
+                                pending.value = PendingAction(translate = evt.translate)
+                            } else if (evt.interpret != null) {
+                                pending.value = PendingAction(interpret = evt.interpret)
                             }
                         }
                     }
@@ -354,6 +371,58 @@ class ChatViewModel(
         updateBanner.value = UpdateBannerState.Hidden
     }
 
+    /* ── STT ── */
+
+    /** Callback set by the UI to receive partial/final speech text */
+    var onSttResult: ((String) -> Unit)? = null
+
+    fun startListening() {
+        if (!SpeechRecognizer.isRecognitionAvailable(app)) return
+        speechRecognizer?.destroy()
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(app)
+
+        val langCode = java.util.Locale.getDefault().language
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, langCode)
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        }
+
+        speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) { listening.value = true }
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+            override fun onEndOfSpeech() { listening.value = false }
+            override fun onError(error: Int) { listening.value = false }
+            override fun onResults(results: Bundle?) {
+                val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull() ?: return
+                onSttResult?.invoke(text)
+            }
+            override fun onPartialResults(partial: Bundle?) {
+                val text = partial?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    ?.firstOrNull() ?: return
+                onSttResult?.invoke(text)
+            }
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+        speechRecognizer?.startListening(intent)
+    }
+
+    fun stopListening() {
+        speechRecognizer?.stopListening()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        listening.value = false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        speechRecognizer?.destroy()
+        streamJob?.cancel()
+    }
+
     fun canInstallUnknownSources(): Boolean = updateManager.canInstallFromUnknownSources()
 
     fun unknownSourcesIntent() = updateManager.unknownSourcesSettingsIntent()
@@ -370,7 +439,8 @@ class ChatViewModel(
                     repo = app.container.chatRepository,
                     prefs = app.container.prefs,
                     currencyService = app.container.currencyService,
-                    updateManager = app.container.updateManager
+                    updateManager = app.container.updateManager,
+                    app = app
                 ) as T
             }
         }

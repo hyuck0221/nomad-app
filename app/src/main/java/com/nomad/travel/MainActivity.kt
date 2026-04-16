@@ -30,11 +30,14 @@ import com.nomad.travel.ui.onboarding.LanguageScreen
 import com.nomad.travel.ui.settings.SettingsScreen
 import com.nomad.travel.ui.setup.ModelSetupScreen
 import com.nomad.travel.ui.theme.NomadTheme
+import com.nomad.travel.ui.translate.FullscreenTextOverlay
+import com.nomad.travel.ui.translate.InterpretScreen
+import com.nomad.travel.ui.translate.TranslateScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
-private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS, MENU_VIEW }
+private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS, MENU_VIEW, TRANSLATE, INTERPRET }
 
 private data class MenuViewArgs(val uri: Uri, val text: String)
 
@@ -88,11 +91,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var destination by remember { mutableStateOf(initial) }
                     var menuArgs by remember { mutableStateOf<MenuViewArgs?>(null) }
+                    var translateLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
+                    var interpretLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
                     val scope = rememberCoroutineScope()
+
+                    var fullscreenText by remember { mutableStateOf<String?>(null) }
 
                     BackHandler(
                         enabled = destination == Destination.SETTINGS ||
-                            destination == Destination.MENU_VIEW
+                            destination == Destination.MENU_VIEW ||
+                            destination == Destination.TRANSLATE ||
+                            destination == Destination.INTERPRET
                     ) {
                         destination = Destination.CHAT
                     }
@@ -122,6 +131,16 @@ class MainActivity : ComponentActivity() {
                                 onOpenMenuView = { uri, text ->
                                     menuArgs = MenuViewArgs(uri, text)
                                     destination = Destination.MENU_VIEW
+                                },
+                                onOpenTranslate = { destination = Destination.TRANSLATE },
+                                onOpenInterpret = { destination = Destination.INTERPRET },
+                                onOpenTranslateWithLangs = { src, tgt ->
+                                    translateLangs = Pair(src, tgt)
+                                    destination = Destination.TRANSLATE
+                                },
+                                onOpenInterpretWithLangs = { src, tgt ->
+                                    interpretLangs = Pair(src, tgt)
+                                    destination = Destination.INTERPRET
                                 }
                             )
                             Destination.SETTINGS -> SettingsScreen(
@@ -139,7 +158,38 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
+                            Destination.TRANSLATE -> {
+                                val langs = translateLangs
+                                TranslateScreen(
+                                    onBack = {
+                                        translateLangs = null
+                                        destination = Destination.CHAT
+                                    },
+                                    onFullscreen = { text -> fullscreenText = text },
+                                    presetSrc = langs?.first,
+                                    presetTgt = langs?.second
+                                )
+                            }
+                            Destination.INTERPRET -> {
+                                val langs = interpretLangs
+                                InterpretScreen(
+                                    onBack = {
+                                        interpretLangs = null
+                                        destination = Destination.CHAT
+                                    },
+                                    presetSrc = langs?.first,
+                                    presetTgt = langs?.second
+                                )
+                            }
                         }
+                    }
+
+                    // Fullscreen text overlay for translation
+                    fullscreenText?.let { text ->
+                        FullscreenTextOverlay(
+                            text = text,
+                            onDismiss = { fullscreenText = null }
+                        )
                     }
 
                     LaunchedEffect(destination) {
