@@ -26,14 +26,14 @@ class ToolRouter(
         val history: List<ChatMessage> = emptyList()
     )
 
-    data class Reply(
-        val visibleText: String,
-        val toolTag: String? = null
-    )
-
     sealed interface StreamEvent {
         data class Delta(val text: String) : StreamEvent
-        data class Complete(val text: String, val toolTag: String?) : StreamEvent
+        data class Complete(
+            val text: String,
+            val toolTag: String?,
+            val currency: ToolTags.CurrencyCall? = null,
+            val ask: ToolTags.AskCall? = null
+        ) : StreamEvent
     }
 
     fun handleStream(context: Context, turn: Turn): Flow<StreamEvent> = flow {
@@ -76,15 +76,17 @@ class ToolRouter(
         var lastCumulative = ""
         gemma.generateStream(built.systemInstruction, built.userMessage).collect { cumulative ->
             lastCumulative = cumulative
-            val cleaned = EXPENSE_TAG.replace(cumulative, "").trimEnd()
-            emit(StreamEvent.Delta(cleaned))
+            emit(StreamEvent.Delta(ToolTags.stripForStream(cumulative)))
         }
 
-        val (visible, executed) = postProcess(lastCumulative)
+        val post = postProcess(lastCumulative)
+        val finalTag = post.toolTag ?: baseTag
         emit(
             StreamEvent.Complete(
-                text = visible.ifBlank { lastCumulative },
-                toolTag = executed ?: baseTag
+                text = post.visibleText.ifBlank { ToolTags.stripAll(lastCumulative) },
+                toolTag = finalTag,
+                currency = post.currency,
+                ask = post.ask
             )
         )
     }
@@ -126,24 +128,47 @@ class ToolRouter(
         }.getOrDefault("")
     }
 
-    private suspend fun postProcess(raw: String): Pair<String, String?> {
-        val match = EXPENSE_TAG.find(raw) ?: return raw to null
-        val attrs = parseAttrs(match.value)
-        val amount = attrs["amount"]?.toDoubleOrNull() ?: return raw to null
-        val currency = attrs["currency"]?.uppercase() ?: "USD"
-        val category = attrs["category"] ?: "misc"
-        val note = attrs["note"].orEmpty()
-        expenses.add(Expense(amount = amount, currency = currency, category = category, note = note))
-        val cleaned = raw.replace(match.value, "").trim()
-        return cleaned to "expense"
-    }
+    private data class PostResult(
+        val visibleText: String,
+        val toolTag: String?,
+        val currency: ToolTags.CurrencyCall?,
+        val ask: ToolTags.AskCall?
+    )
 
-    private fun parseAttrs(tag: String): Map<String, String> {
-        val out = mutableMapOf<String, String>()
-        ATTR.findAll(tag).forEach { m ->
-            out[m.groupValues[1]] = m.groupValues[2]
+    private suspend fun postProcess(raw: String): PostResult {
+        var tag: String? = null
+
+        EXPENSE_TAG.find(raw)?.let { m ->
+            val attrs = ToolTags.parseAttrs(m.value)
+            val amount = attrs["amount"]?.toDoubleOrNull()
+            if (amount != null) {
+                val currency = attrs["currency"]?.uppercase() ?: "USD"
+                val category = attrs["category"] ?: "misc"
+                val note = attrs["note"].orEmpty()
+                expenses.add(
+                    Expense(
+                        amount = amount,
+                        currency = currency,
+                        category = category,
+                        note = note
+                    )
+                )
+                tag = "expense"
+            }
         }
-        return out
+
+        val currency = ToolTags.extractCurrency(raw)
+        if (currency != null) tag = "currency"
+
+        val ask = ToolTags.extractAsk(raw)
+        if (ask != null) tag = "ask"
+
+        return PostResult(
+            visibleText = ToolTags.stripAll(raw),
+            toolTag = tag,
+            currency = currency,
+            ask = ask
+        )
     }
 
     private fun looksLikeExpense(text: String): Boolean {
@@ -151,25 +176,13 @@ class ToolRouter(
         return EXPENSE_HINTS.any { lower.contains(it) }
     }
 
-    private fun looksLikeMenuSearch(text: String): Boolean {
-        val lower = text.lowercase()
-        return MENU_HINTS.any { lower.contains(it) }
-    }
-
     companion object {
         private val EXPENSE_TAG = Regex("<EXPENSE[^>]*>")
-        private val ATTR = Regex("(\\w+)=\"([^\"]*)\"")
         private val EXPENSE_HINTS = listOf(
-            "지출", "썼어", "결제", "샀어", "환율",
+            "지출", "썼어", "결제", "샀어",
             "spent", "paid", "bought", "expense",
             "花了", "支出",
-            "使った", "払った", "支出"
-        )
-        private val MENU_HINTS = listOf(
-            "메뉴", "음식", "요리",
-            "menu", "dish", "food",
-            "菜", "料理",
-            "メニュー", "料理"
+            "使った", "払った"
         )
         private const val FALLBACK_NO_MODEL =
             "온디바이스 모델이 아직 준비되지 않았습니다. 설정에서 Gemma 모델 파일을 추가해주세요."

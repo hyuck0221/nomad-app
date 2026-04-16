@@ -1,0 +1,69 @@
+# Tag-triggered release — push a tag like `v0.2.0` to build & publish the APK.
+#
+# Required GitHub Secrets (Settings → Secrets and variables → Actions):
+#   SIGNING_KEYSTORE_BASE64   base64-encoded release keystore
+#   SIGNING_KEYSTORE_PASSWORD keystore password
+#   SIGNING_KEY_ALIAS         key alias
+#   SIGNING_KEY_PASSWORD      key password
+#
+# Generate a keystore once:
+#   keytool -genkeypair -v -keystore release.keystore -alias nomad \
+#     -keyalg RSA -keysize 2048 -validity 10000
+#   base64 -i release.keystore | pbcopy   # → paste into SIGNING_KEYSTORE_BASE64
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Extract version from tag
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION (tag $TAG, run ${{ github.run_number }})"
+
+      - name: Decode signing keystore
+        run: |
+          echo "${{ secrets.SIGNING_KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.keystore"
+
+      - name: Build release APK
+        env:
+          VERSION_NAME: ${{ steps.ver.outputs.version }}
+          VERSION_CODE: ${{ github.run_number }}
+          SIGNING_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-configuration-cache
+
+      - name: Rename APK
+        run: |
+          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -n1)
+          cp "$APK" "nomad-${{ steps.ver.outputs.version }}.apk"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: nomad-${{ steps.ver.outputs.version }}.apk
+          generate_release_notes: true

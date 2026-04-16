@@ -29,6 +29,28 @@
     <string name="tool_label_travel">· 旅行信息</string>
     <string name="tool_label_chat">· 对话</string>
     <string name="tool_label_cancelled">· 已取消</string>
+    <string name="tool_label_currency">· 汇率换算</string>
+    <string name="tool_label_ask">· 需要选择</string>
+
+    <string name="menu_view_button">查看完整菜单</string>
+    <string name="menu_view_title">菜单翻译</string>
+    <string name="currency_choice_title">请选择获取汇率的方式</string>
+    <string name="currency_choice_live">调用实时 API</string>
+    <string name="currency_choice_estimated">离线估算</string>
+
+    <string name="settings_app_version">应用版本</string>
+    <string name="settings_current_version">当前版本 %1$s</string>
+    <string name="settings_check_update">检查更新</string>
+    <string name="update_checking">检查中…</string>
+    <string name="update_up_to_date">已是最新版本</string>
+    <string name="update_available_title">新版本 %1$s</string>
+    <string name="update_download_install">下载并安装</string>
+    <string name="update_downloading">下载中… %1$d%%</string>
+    <string name="update_install_now">立即安装</string>
+    <string name="update_error">检查更新失败</string>
+    <string name="update_no_apk">发布中没有 APK 文件</string>
+    <string name="update_allow_unknown">需要允许安装来自未知来源的应用</string>
+    <string name="update_open_settings">打开设置</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_back">返回</string>

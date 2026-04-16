@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -113,6 +115,7 @@ import java.io.File
 @Composable
 fun ChatScreen(
     onOpenSettings: () -> Unit = {},
+    onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
     vm: ChatViewModel = viewModel(factory = ChatViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -183,6 +186,10 @@ fun ChatScreen(
                 sendTick++
             },
             onCancel = { vm.cancelResponse() },
+            onOpenMenuView = onOpenMenuView,
+            onResolveCurrency = { live -> vm.resolveCurrency(live) },
+            onResolveAsk = { option -> vm.resolveAsk(context, option) },
+            onDismissPending = { vm.dismissPending() },
             onCamera = {
                 val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
                     PackageManager.PERMISSION_GRANTED
@@ -243,7 +250,11 @@ private fun ChatScreenBody(
     onSend: () -> Unit,
     onCancel: () -> Unit,
     onCamera: () -> Unit,
-    onGallery: () -> Unit
+    onGallery: () -> Unit,
+    onOpenMenuView: (Uri, String) -> Unit,
+    onResolveCurrency: (Boolean) -> Unit,
+    onResolveAsk: (String) -> Unit,
+    onDismissPending: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -293,6 +304,14 @@ private fun ChatScreenBody(
             }
         }
 
+        val messageCount = state.messages.size
+        LaunchedEffect(messageCount) {
+            if (messageCount == 0) return@LaunchedEffect
+            autoScroll = true
+            val lastIdx = state.messages.lastIndex
+            listState.animateScrollToItem(lastIdx, Int.MAX_VALUE / 2)
+        }
+
         if (state.messages.isEmpty()) {
             EmptyState(modifier = Modifier.weight(1f))
         } else {
@@ -304,11 +323,29 @@ private fun ChatScreenBody(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(state.messages, key = { it.id }) { msg ->
-                    MessageRow(msg)
+                itemsIndexed(
+                    items = state.messages,
+                    key = { _, m -> m.id }
+                ) { index, msg ->
+                    val priorImageUri = state.messages
+                        .getOrNull(index - 1)
+                        ?.takeIf { it.role == Role.USER }
+                        ?.imageUri
+                    MessageRow(
+                        msg = msg,
+                        menuImageUri = priorImageUri,
+                        onOpenMenuView = onOpenMenuView
+                    )
                 }
             }
         }
+
+        PendingActionCard(
+            pending = state.pending,
+            onResolveCurrency = onResolveCurrency,
+            onResolveAsk = onResolveAsk,
+            onDismiss = onDismissPending
+        )
 
         AttachmentPreview(
             uri = pendingImage,
@@ -546,7 +583,11 @@ private fun SuggestionChips() {
 }
 
 @Composable
-private fun MessageRow(msg: ChatMessage) {
+private fun MessageRow(
+    msg: ChatMessage,
+    menuImageUri: Uri? = null,
+    onOpenMenuView: (Uri, String) -> Unit = { _, _ -> }
+) {
     val isUser = msg.role == Role.USER
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -561,18 +602,16 @@ private fun MessageRow(msg: ChatMessage) {
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
-                msg.imageUri?.let { uri ->
-                    AsyncImage(
-                        model = uri,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(200.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .padding(bottom = 6.dp)
-                    )
-                }
-                if (!(isUser && msg.text.isBlank())) {
+                if (msg.imageUri != null) {
+                    ImageMessageBubble(msg, isUser)
+                } else if (!(isUser && msg.text.isBlank())) {
                     MessageBubble(msg, isUser)
+                }
+                if (!isUser && msg.toolTag == "menu_translate" && menuImageUri != null && !msg.streaming) {
+                    Spacer(Modifier.size(6.dp))
+                    MenuViewButton(
+                        onClick = { onOpenMenuView(menuImageUri, msg.text) }
+                    )
                 }
                 msg.toolTag?.takeIf { !isUser && it != "error" }?.let { tag ->
                     val label = toolTagLabel(tag)
@@ -587,6 +626,35 @@ private fun MessageRow(msg: ChatMessage) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MenuViewButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(
+                Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Default.PhotoLibrary,
+            contentDescription = null,
+            tint = NomadSilver,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(R.string.menu_view_button),
+            style = MaterialTheme.typography.labelLarge.copy(
+                color = NomadSilver,
+                fontWeight = FontWeight.SemiBold
+            )
+        )
     }
 }
 
@@ -641,6 +709,51 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
                 lineHeight = 22.sp
             )
         )
+    }
+}
+
+@Composable
+private fun ImageMessageBubble(msg: ChatMessage, isUser: Boolean) {
+    val shape = if (isUser) {
+        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
+    } else {
+        RoundedCornerShape(topStart = 4.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+    }
+    val bg = if (isUser) NomadUserBubble else NomadAssistantBubble
+    val textColor = NomadSilver
+
+    Column(
+        modifier = Modifier
+            .clip(shape)
+            .background(bg)
+            .padding(6.dp)
+    ) {
+        msg.imageUri?.let { uri ->
+            AsyncImage(
+                model = uri,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp)
+                    .clip(RoundedCornerShape(14.dp))
+            )
+        }
+        if (msg.text.isNotBlank()) {
+            Spacer(Modifier.size(6.dp))
+            val rendered = remember(msg.text, msg.streaming, isUser) {
+                if (isUser) AnnotatedString(msg.text)
+                else renderMarkdown(text = msg.text, appendCaret = msg.streaming)
+            }
+            Text(
+                text = rendered,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = textColor,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp
+                ),
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
     }
 }
 
@@ -953,8 +1066,174 @@ private fun toolTagLabel(tag: String): String? = when (tag) {
     "menu_translate" -> stringResource(R.string.tool_label_menu_translate)
     "expense" -> stringResource(R.string.tool_label_expense)
     "cancelled" -> stringResource(R.string.tool_label_cancelled)
+    "currency", "currency_loading", "currency_result" ->
+        stringResource(R.string.tool_label_currency)
+    "ask" -> stringResource(R.string.tool_label_ask)
     "chat", "travel", "menu_search" -> stringResource(R.string.tool_label_chat)
     else -> null
+}
+
+@Composable
+private fun PendingActionCard(
+    pending: PendingAction?,
+    onResolveCurrency: (Boolean) -> Unit,
+    onResolveAsk: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AnimatedVisibility(visible = pending != null) {
+        if (pending == null) return@AnimatedVisibility
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(NomadInputField)
+                .border(
+                    1.dp,
+                    Color.White.copy(alpha = 0.08f),
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(14.dp)
+        ) {
+            when {
+                pending.currency != null -> CurrencyChoiceContent(
+                    call = pending.currency,
+                    onResolve = onResolveCurrency,
+                    onDismiss = onDismiss
+                )
+                pending.ask != null -> AskChoiceContent(
+                    call = pending.ask,
+                    onPick = onResolveAsk,
+                    onDismiss = onDismiss
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CurrencyChoiceContent(
+    call: com.nomad.travel.tools.ToolTags.CurrencyCall,
+    onResolve: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = stringResource(R.string.currency_choice_title),
+            style = MaterialTheme.typography.labelLarge.copy(color = NomadSilver),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = null,
+                tint = NomadMuted,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+    Spacer(Modifier.size(4.dp))
+    val amountLabel = remember(call) {
+        val f = java.text.DecimalFormat("#,##0.##")
+        "${f.format(call.amount)} ${call.from} → ${call.to}"
+    }
+    Text(
+        text = amountLabel,
+        style = MaterialTheme.typography.bodyMedium.copy(color = NomadMist)
+    )
+    Spacer(Modifier.size(10.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChoiceButton(
+            label = stringResource(R.string.currency_choice_live),
+            primary = true,
+            modifier = Modifier.weight(1f),
+            onClick = { onResolve(true) }
+        )
+        ChoiceButton(
+            label = stringResource(R.string.currency_choice_estimated),
+            primary = false,
+            modifier = Modifier.weight(1f),
+            onClick = { onResolve(false) }
+        )
+    }
+}
+
+@Composable
+private fun AskChoiceContent(
+    call: com.nomad.travel.tools.ToolTags.AskCall,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = call.prompt,
+            style = MaterialTheme.typography.labelLarge.copy(color = NomadSilver),
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Close,
+                contentDescription = null,
+                tint = NomadMuted,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+    Spacer(Modifier.size(10.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        call.options.forEach { opt ->
+            ChoiceButton(
+                label = opt,
+                primary = false,
+                modifier = Modifier.fillMaxWidth(),
+                onClick = { onPick(opt) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoiceButton(
+    label: String,
+    primary: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val bg = if (primary) {
+        Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
+    } else {
+        SolidColor(Color.White.copy(alpha = 0.08f))
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(
+                color = NomadSilver,
+                fontWeight = FontWeight.SemiBold
+            )
+        )
+    }
 }
 
 private fun createTempImageUri(context: Context): Uri {

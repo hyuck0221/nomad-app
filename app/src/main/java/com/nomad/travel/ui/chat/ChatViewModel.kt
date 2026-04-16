@@ -12,7 +12,9 @@ import com.nomad.travel.data.Role
 import com.nomad.travel.data.UserPrefs
 import com.nomad.travel.data.chat.ChatRepository
 import com.nomad.travel.data.chat.ChatSessionEntity
+import com.nomad.travel.tools.CurrencyService
 import com.nomad.travel.tools.ToolRouter
+import com.nomad.travel.tools.ToolTags
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -27,26 +29,35 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.DecimalFormat
 import java.util.Locale
+
+data class PendingAction(
+    val currency: ToolTags.CurrencyCall? = null,
+    val ask: ToolTags.AskCall? = null
+)
 
 data class ChatUiState(
     val sessions: List<ChatSessionEntity> = emptyList(),
     val currentSessionId: Long? = null,
     val messages: List<ChatMessage> = emptyList(),
-    val isResponding: Boolean = false
+    val isResponding: Boolean = false,
+    val pending: PendingAction? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModel(
     private val router: ToolRouter,
     private val repo: ChatRepository,
-    private val prefs: UserPrefs
+    private val prefs: UserPrefs,
+    private val currencyService: CurrencyService
 ) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<Long?>(null)
     private val responding = MutableStateFlow(false)
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
+    private val pending = MutableStateFlow<PendingAction?>(null)
     private var streamJob: Job? = null
 
     private val persistedMessages = currentSessionId.flatMapLatest { id ->
@@ -54,20 +65,24 @@ class ChatViewModel(
     }
 
     val state: StateFlow<ChatUiState> = combine(
-        repo.observeSessions(),
-        currentSessionId,
-        persistedMessages,
-        responding,
-        overlay
-    ) { sessions, id, msgs, busy, live ->
-        val combined = if (live != null) msgs + live else msgs
-        ChatUiState(
-            sessions = sessions,
-            currentSessionId = id,
-            messages = combined,
-            isResponding = busy
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
+        combine(
+            repo.observeSessions(),
+            currentSessionId,
+            persistedMessages,
+            responding,
+            overlay
+        ) { sessions, id, msgs, busy, live ->
+            val combined = if (live != null) msgs + live else msgs
+            ChatUiState(
+                sessions = sessions,
+                currentSessionId = id,
+                messages = combined,
+                isResponding = busy
+            )
+        },
+        pending
+    ) { base, p -> base.copy(pending = p) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
 
     init {
         viewModelScope.launch {
@@ -83,6 +98,7 @@ class ChatViewModel(
     fun switchSession(id: Long) {
         if (currentSessionId.value == id) return
         overlay.value = null
+        pending.value = null
         currentSessionId.value = id
         viewModelScope.launch { prefs.setLastSessionId(id) }
     }
@@ -90,6 +106,7 @@ class ChatViewModel(
     fun newSession() {
         viewModelScope.launch {
             overlay.value = null
+            pending.value = null
             val id = repo.createSession(DEFAULT_TITLE)
             currentSessionId.value = id
             prefs.setLastSessionId(id)
@@ -104,6 +121,7 @@ class ChatViewModel(
                 currentSessionId.value = next
                 prefs.setLastSessionId(next)
                 overlay.value = null
+                pending.value = null
             }
         }
     }
@@ -112,6 +130,8 @@ class ChatViewModel(
         if (text.isBlank() && image == null) return
         if (responding.value) return
         val sessionId = currentSessionId.value ?: return
+
+        pending.value = null
 
         streamJob = viewModelScope.launch {
             val historySnapshot = repo.snapshotMessages(sessionId)
@@ -155,6 +175,11 @@ class ChatViewModel(
                                 toolTag = evt.toolTag
                             )
                             overlay.value = null
+                            if (evt.currency != null) {
+                                pending.value = PendingAction(currency = evt.currency)
+                            } else if (evt.ask != null) {
+                                pending.value = PendingAction(ask = evt.ask)
+                            }
                         }
                     }
                 }
@@ -192,6 +217,46 @@ class ChatViewModel(
         streamJob = null
     }
 
+    fun dismissPending() {
+        pending.value = null
+    }
+
+    /** User chose how to run a pending currency conversion. */
+    fun resolveCurrency(useLiveApi: Boolean) {
+        val call = pending.value?.currency ?: return
+        val sessionId = currentSessionId.value ?: return
+        pending.value = null
+
+        viewModelScope.launch {
+            val placeholder = repo.appendMessage(
+                sessionId,
+                Role.ASSISTANT,
+                loadingText(useLiveApi),
+                toolTag = "currency_loading"
+            )
+
+            val result: CurrencyService.Result = if (useLiveApi) {
+                currencyService.convertLive(call.amount, call.from, call.to)
+                    ?: currencyService.convertEstimated(call.amount, call.from, call.to)
+                        .copy(source = CurrencyService.Source.ESTIMATED)
+            } else {
+                currencyService.convertEstimated(call.amount, call.from, call.to)
+            }
+
+            val formatted = formatCurrencyResult(result)
+            repo.updateMessage(placeholder, formatted, "currency_result")
+        }
+    }
+
+    /** User picked one of the ASK options — feed it back as a user turn. */
+    fun resolveAsk(context: Context, option: String) {
+        val p = pending.value?.ask ?: return
+        pending.value = null
+        send(context, option, null)
+        // keep `p` reference-silent to hint the choice applied
+        @Suppress("UNUSED_VARIABLE") val _ignore = p
+    }
+
     private suspend fun applyFallbackTitle(
         sessionId: Long,
         isFirstTurn: Boolean,
@@ -211,6 +276,30 @@ class ChatViewModel(
         }
     }
 
+    private fun loadingText(live: Boolean): String =
+        if (live) "환율을 조회하고 있어요…" else "오프라인 예상 환율로 계산하고 있어요…"
+
+    private fun formatCurrencyResult(r: CurrencyService.Result): String {
+        val amtFmt = DecimalFormat("#,##0.##")
+        val rateFmt = DecimalFormat("#,##0.####")
+        val source = when (r.source) {
+            CurrencyService.Source.LIVE_API -> "실시간 환율"
+            CurrencyService.Source.ESTIMATED -> "오프라인 예상"
+        }
+        val sym = r.symbol?.let { "$it " } ?: ""
+        return buildString {
+            append("**")
+            append(amtFmt.format(r.amount))
+            append(' ').append(r.fromCode).append(" → ")
+            append(sym).append(amtFmt.format(r.convertedAmount))
+            append(' ').append(r.toCode)
+            append("**\n")
+            append("1 ").append(r.fromCode).append(" ≈ ")
+            append(rateFmt.format(r.rate)).append(' ').append(r.toCode)
+            append("  ·  ").append(source)
+        }
+    }
+
     companion object {
         private const val DEFAULT_TITLE = "New chat"
 
@@ -221,7 +310,8 @@ class ChatViewModel(
                 return ChatViewModel(
                     router = app.container.toolRouter,
                     repo = app.container.chatRepository,
-                    prefs = app.container.prefs
+                    prefs = app.container.prefs,
+                    currencyService = app.container.currencyService
                 ) as T
             }
         }

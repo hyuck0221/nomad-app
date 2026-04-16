@@ -2,6 +2,7 @@ package com.nomad.travel
 
 import android.content.Context
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -24,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nomad.travel.ui.chat.ChatScreen
+import com.nomad.travel.ui.menu.MenuSplitScreen
 import com.nomad.travel.ui.onboarding.LanguageScreen
 import com.nomad.travel.ui.settings.SettingsScreen
 import com.nomad.travel.ui.setup.ModelSetupScreen
@@ -32,7 +34,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
-private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS }
+private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS, MENU_VIEW }
+
+private data class MenuViewArgs(val uri: Uri, val text: String)
 
 class MainActivity : ComponentActivity() {
 
@@ -83,9 +87,13 @@ class MainActivity : ComponentActivity() {
                     LocalOnBackPressedDispatcherOwner provides activity
                 ) {
                     var destination by remember { mutableStateOf(initial) }
+                    var menuArgs by remember { mutableStateOf<MenuViewArgs?>(null) }
                     val scope = rememberCoroutineScope()
 
-                    BackHandler(enabled = destination == Destination.SETTINGS) {
+                    BackHandler(
+                        enabled = destination == Destination.SETTINGS ||
+                            destination == Destination.MENU_VIEW
+                    ) {
                         destination = Destination.CHAT
                     }
 
@@ -110,11 +118,27 @@ class MainActivity : ComponentActivity() {
                                 onReady = { destination = Destination.CHAT }
                             )
                             Destination.CHAT -> ChatScreen(
-                                onOpenSettings = { destination = Destination.SETTINGS }
+                                onOpenSettings = { destination = Destination.SETTINGS },
+                                onOpenMenuView = { uri, text ->
+                                    menuArgs = MenuViewArgs(uri, text)
+                                    destination = Destination.MENU_VIEW
+                                }
                             )
                             Destination.SETTINGS -> SettingsScreen(
                                 onBack = { destination = Destination.CHAT }
                             )
+                            Destination.MENU_VIEW -> {
+                                val args = menuArgs
+                                if (args == null) {
+                                    destination = Destination.CHAT
+                                } else {
+                                    MenuSplitScreen(
+                                        imageUri = args.uri,
+                                        text = args.text,
+                                        onBack = { destination = Destination.CHAT }
+                                    )
+                                }
+                            }
                         }
                     }
 

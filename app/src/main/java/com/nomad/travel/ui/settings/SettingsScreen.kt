@@ -1,5 +1,6 @@
 package com.nomad.travel.ui.settings
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -28,7 +29,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,8 +45,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +90,7 @@ fun SettingsScreen(
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
     var languageExpanded by remember { mutableStateOf(false) }
     var modelsExpanded by remember { mutableStateOf(false) }
+    var unknownSourcesIntent by remember { mutableStateOf<Intent?>(null) }
 
     Column(
         modifier = Modifier
@@ -259,6 +266,24 @@ fun SettingsScreen(
                 }
             }
 
+            // ─── App version & update ────────────
+            Section(stringResource(R.string.settings_app_version)) {
+                UpdateSection(
+                    state = state.updateState,
+                    currentVersion = state.currentVersion,
+                    onCheck = { vm.checkForUpdate() },
+                    onDownload = { vm.downloadAndInstall() },
+                    onInstall = {
+                        if (vm.canInstallUnknownSources()) {
+                            vm.installUpdate()
+                        } else {
+                            unknownSourcesIntent = vm.unknownSourcesIntent()
+                        }
+                    },
+                    onDismiss = { vm.dismissUpdateState() }
+                )
+            }
+
             // ─── Danger zone ──────────────────────
             Section(stringResource(R.string.settings_chat_section)) {
                 DangerButton(
@@ -289,6 +314,28 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmClear = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    unknownSourcesIntent?.let { intent ->
+        val ctx = LocalContext.current
+        AlertDialog(
+            onDismissRequest = { unknownSourcesIntent = null },
+            title = { Text(stringResource(R.string.update_allow_unknown)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    ctx.startActivity(intent)
+                    unknownSourcesIntent = null
+                }) { Text(stringResource(R.string.update_open_settings)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { unknownSourcesIntent = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -505,6 +552,143 @@ private fun SecondaryButton(label: String, onClick: () -> Unit) {
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(color = NomadMist)
         )
+    }
+}
+
+@Composable
+private fun UpdateSection(
+    state: UpdateState,
+    currentVersion: String,
+    onCheck: () -> Unit,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.settings_current_version, currentVersion),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+        }
+
+        when (state) {
+            is UpdateState.Idle -> {
+                PrimaryButton(stringResource(R.string.settings_check_update), onClick = onCheck)
+            }
+            is UpdateState.Checking -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = NomadGlow
+                    )
+                    Text(
+                        text = stringResource(R.string.update_checking),
+                        style = MaterialTheme.typography.bodyMedium.copy(color = NomadMist)
+                    )
+                }
+            }
+            is UpdateState.UpToDate -> {
+                Text(
+                    text = stringResource(R.string.update_up_to_date),
+                    style = MaterialTheme.typography.bodyMedium.copy(color = NomadGlow)
+                )
+            }
+            is UpdateState.Available -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(NomadRoyal.copy(alpha = 0.18f))
+                        .border(1.5.dp, NomadGlow, RoundedCornerShape(14.dp))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.update_available_title,
+                            state.release.versionName
+                        ),
+                        style = MaterialTheme.typography.titleMedium.copy(color = NomadSilver),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    state.release.notes?.let { notes ->
+                        Text(
+                            text = notes.take(200),
+                            style = MaterialTheme.typography.bodySmall.copy(color = NomadMist),
+                            maxLines = 4
+                        )
+                    }
+                    Spacer(Modifier.size(4.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PrimaryButton(
+                            stringResource(R.string.update_download_install),
+                            onClick = onDownload
+                        )
+                        SecondaryButton(
+                            stringResource(R.string.common_cancel),
+                            onClick = onDismiss
+                        )
+                    }
+                }
+            }
+            is UpdateState.Downloading -> {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(
+                            R.string.update_downloading,
+                            (state.progress * 100).toInt()
+                        ),
+                        style = MaterialTheme.typography.bodyMedium.copy(color = NomadMist)
+                    )
+                    LinearProgressIndicator(
+                        progress = { state.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = NomadGlow,
+                        trackColor = Color.White.copy(alpha = 0.08f),
+                        strokeCap = StrokeCap.Round
+                    )
+                }
+            }
+            is UpdateState.ReadyToInstall -> {
+                PrimaryButton(
+                    stringResource(R.string.update_install_now),
+                    onClick = onInstall
+                )
+            }
+            is UpdateState.Error -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = stringResource(
+                            if (state.message == "update_no_apk") R.string.update_no_apk
+                            else R.string.update_error
+                        ),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    )
+                    SecondaryButton(
+                        stringResource(R.string.settings_check_update),
+                        onClick = onDismiss
+                    )
+                }
+            }
+        }
     }
 }
 

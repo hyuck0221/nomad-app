@@ -29,6 +29,28 @@
     <string name="tool_label_travel">· 旅行情報</string>
     <string name="tool_label_chat">· 会話</string>
     <string name="tool_label_cancelled">· キャンセル</string>
+    <string name="tool_label_currency">· 為替換算</string>
+    <string name="tool_label_ask">· 選択が必要</string>
+
+    <string name="menu_view_button">メニューを全画面で見る</string>
+    <string name="menu_view_title">メニュー翻訳</string>
+    <string name="currency_choice_title">為替レートの取得方法を選んでください</string>
+    <string name="currency_choice_live">リアルタイム API</string>
+    <string name="currency_choice_estimated">オフライン推定</string>
+
+    <string name="settings_app_version">アプリバージョン</string>
+    <string name="settings_current_version">現在のバージョン %1$s</string>
+    <string name="settings_check_update">アップデートを確認</string>
+    <string name="update_checking">確認中…</string>
+    <string name="update_up_to_date">最新バージョンです</string>
+    <string name="update_available_title">新バージョン %1$s</string>
+    <string name="update_download_install">ダウンロードしてインストール</string>
+    <string name="update_downloading">ダウンロード中… %1$d%%</string>
+    <string name="update_install_now">今すぐインストール</string>
+    <string name="update_error">アップデートの確認に失敗しました</string>
+    <string name="update_no_apk">リリースに APK がありません</string>
+    <string name="update_allow_unknown">不明なソースからのインストール許可が必要です</string>
+    <string name="update_open_settings">設定を開く</string>
 
     <string name="settings_title">設定</string>
     <string name="settings_back">戻る</string>

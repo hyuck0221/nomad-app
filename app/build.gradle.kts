@@ -15,11 +15,25 @@ android {
         applicationId = "com.nomad.travel"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        buildConfigField("String", "GITHUB_REPO", "\"hyuck0221/nomad-app\"")
+    }
+
+    signingConfigs {
+        val ks = System.getenv("SIGNING_KEYSTORE_PATH")
+        if (!ks.isNullOrBlank()) {
+            create("release") {
+                storeFile = file(ks)
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -29,6 +43,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            val ks = System.getenv("SIGNING_KEYSTORE_PATH")
+            if (!ks.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
