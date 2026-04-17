@@ -188,7 +188,7 @@ fun InterpretScreen(
                     ) {
                         if (state.theirDisplayText.isEmpty() && !state.isTheirAreaTranslating) {
                             Text(
-                                text = stringResource(R.string.interpret_empty_partner),
+                                text = interpretPartnerPlaceholder(state.theirLanguage.code),
                                 style = MaterialTheme.typography.bodyLarge.copy(
                                     color = NomadMuted,
                                     textAlign = TextAlign.Center
@@ -454,4 +454,39 @@ fun InterpretScreen(
             }
         }
     }
+}
+
+private fun interpretPartnerPlaceholder(code: String): String = when (code) {
+    "ko" -> "상대방이 작성하거나 마이크로 말하면\n여기에 번역이 표시됩니다"
+    "en" -> "When the other person types or speaks into the mic,\nthe translation will appear here"
+    "ja" -> "相手が入力したりマイクで話すと、\nここに翻訳が表示されます"
+    "zh" -> "当对方输入或对着麦克风说话时，\n翻译将显示在这里"
+    "es" -> "Cuando la otra persona escriba o hable al micrófono,\nla traducción aparecerá aquí"
+    "fr" -> "Lorsque l'autre personne tape ou parle dans le micro,\nla traduction apparaîtra ici"
+    "de" -> "Wenn die andere Person tippt oder ins Mikrofon spricht,\nerscheint hier die Übersetzung"
+    "it" -> "Quando l'altra persona digita o parla al microfono,\nla traduzione apparirà qui"
+    "pt" -> "Quando a outra pessoa digitar ou falar ao microfone,\na tradução aparecerá aqui"
+    "ru" -> "Когда собеседник печатает или говорит в микрофон,\nздесь появится перевод"
+    "th" -> "เมื่ออีกฝ่ายพิมพ์หรือพูดเข้าไมโครโฟน\nคำแปลจะปรากฏที่นี่"
+    "vi" -> "Khi người kia nhập hoặc nói vào micrô,\nbản dịch sẽ hiển thị ở đây"
+    "id" -> "Saat lawan bicara mengetik atau berbicara ke mikrofon,\nterjemahan akan muncul di sini"
+    "ms" -> "Apabila rakan bicara menaip atau bercakap ke mikrofon,\nterjemahan akan muncul di sini"
+    "ar" -> "عندما يكتب الطرف الآخر أو يتحدث في الميكروفون،\nستظهر الترجمة هنا"
+    "hi" -> "जब सामने वाला टाइप करे या माइक में बोले,\nअनुवाद यहाँ दिखाई देगा"
+    "tr" -> "Karşı taraf yazdığında veya mikrofona konuştuğunda,\nçeviri burada görünecek"
+    "nl" -> "Wanneer de ander typt of in de microfoon spreekt,\nverschijnt hier de vertaling"
+    "pl" -> "Gdy rozmówca pisze lub mówi do mikrofonu,\ntłumaczenie pojawi się tutaj"
+    "sv" -> "När motparten skriver eller talar i mikrofonen,\nvisas översättningen här"
+    "da" -> "Når den anden person skriver eller taler i mikrofonen,\nvises oversættelsen her"
+    "fi" -> "Kun toinen henkilö kirjoittaa tai puhuu mikrofoniin,\nkäännös näkyy tässä"
+    "nb" -> "Når den andre personen skriver eller snakker i mikrofonen,\nvises oversettelsen her"
+    "el" -> "Όταν ο συνομιλητής πληκτρολογεί ή μιλά στο μικρόφωνο,\nη μετάφραση θα εμφανιστεί εδώ"
+    "cs" -> "Když druhá osoba píše nebo mluví do mikrofonu,\npřeklad se zobrazí zde"
+    "hu" -> "Amikor a beszélgetőtárs gépel vagy a mikrofonba beszél,\nitt jelenik meg a fordítás"
+    "ro" -> "Când cealaltă persoană scrie sau vorbește la microfon,\ntraducerea va apărea aici"
+    "uk" -> "Коли співрозмовник друкує або говорить у мікрофон,\nтут з'явиться переклад"
+    "he" -> "כשהצד השני מקליד או מדבר למיקרופון,\nהתרגום יופיע כאן"
+    "bn" -> "অন্য পক্ষ টাইপ করলে বা মাইকে কথা বললে,\nঅনুবাদ এখানে দেখানো হবে"
+    "tl" -> "Kapag nag-type o nagsalita ang kausap sa mikropono,\nlilitaw ang salin dito"
+    else -> "When the other person types or speaks into the mic,\nthe translation will appear here"
 }

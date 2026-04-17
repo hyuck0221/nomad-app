@@ -53,7 +53,6 @@ class ToolRouter(
         val baseTag = when {
             ocrBlock != null -> "menu_translate"
             looksLikeTimeQuery(turn.userText) -> "local_time"
-            looksLikeExpense(turn.userText) -> "expense"
             else -> "chat"
         }
 
@@ -194,11 +193,6 @@ class ToolRouter(
         return TIME_HINTS.any { lower.contains(it) }
     }
 
-    private fun looksLikeExpense(text: String): Boolean {
-        val lower = text.lowercase()
-        return EXPENSE_HINTS.any { lower.contains(it) }
-    }
-
     companion object {
         private val EXPENSE_TAG = Regex("<EXPENSE[^>]*>")
         private val TIME_HINTS = listOf(
@@ -208,12 +202,6 @@ class ToolRouter(
             "what date", "today's date",
             "几点", "现在时间", "什么时候", "今天几号", "星期几",
             "何時", "今何時", "今日は何曜日", "何月何日"
-        )
-        private val EXPENSE_HINTS = listOf(
-            "지출", "썼어", "결제", "샀어",
-            "spent", "paid", "bought", "expense",
-            "花了", "支出",
-            "使った", "払った"
         )
         private const val FALLBACK_NO_MODEL =
             "온디바이스 모델이 아직 준비되지 않았습니다. 설정에서 Gemma 모델 파일을 추가해주세요."

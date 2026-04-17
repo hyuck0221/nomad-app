@@ -217,14 +217,19 @@ class TranslateViewModel(
     fun updateInterpretInput(text: String) =
         _interpret.update { it.copy(myInput = text) }
 
-    /** I typed/spoke → translate my language → partner's language, show on their side */
+    /** I typed/spoke → show my text on my side, translate to partner's language on their side */
     fun sendMyMessage() {
         val s = _interpret.value
         if (s.myInput.isBlank() || s.isTheirAreaTranslating) return
         val text = s.myInput.trim()
 
         _interpret.update {
-            it.copy(myInput = "", theirDisplayText = "", isTheirAreaTranslating = true)
+            it.copy(
+                myInput = "",
+                myDisplayText = text,
+                theirDisplayText = "",
+                isTheirAreaTranslating = true
+            )
         }
 
         interpretJob = viewModelScope.launch {
@@ -237,13 +242,17 @@ class TranslateViewModel(
         }
     }
 
-    /** Partner spoke via mic → translate partner's language → my language, show on my side */
+    /** Partner spoke via mic → show their text on their side, translate to my language on my side */
     fun sendPartnerMessage(text: String) {
         if (text.isBlank()) return
         val s = _interpret.value
 
         _interpret.update {
-            it.copy(myDisplayText = "", isMyAreaTranslating = true)
+            it.copy(
+                theirDisplayText = text,
+                myDisplayText = "",
+                isMyAreaTranslating = true
+            )
         }
 
         interpretJob = viewModelScope.launch {

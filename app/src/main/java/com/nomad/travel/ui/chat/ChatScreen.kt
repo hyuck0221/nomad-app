@@ -1291,7 +1291,6 @@ private fun CircleIconButton(onClick: () -> Unit, content: @Composable () -> Uni
 @Composable
 private fun toolTagLabel(tag: String): String? = when (tag) {
     "menu_translate" -> stringResource(R.string.tool_label_menu_translate)
-    "expense" -> stringResource(R.string.tool_label_expense)
     "cancelled" -> stringResource(R.string.tool_label_cancelled)
     "currency", "currency_loading", "currency_result" ->
         stringResource(R.string.tool_label_currency)

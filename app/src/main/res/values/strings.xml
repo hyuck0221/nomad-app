@@ -130,7 +130,7 @@
     <string name="translate_fullscreen">전체 화면</string>
     <string name="interpret_title">대면 통역</string>
     <string name="interpret_clear">대화 지우기</string>
-    <string name="interpret_empty_me">상대방이 마이크로 말하면\n여기에 번역이 표시됩니다</string>
+    <string name="interpret_empty_me">내가 보낸 메시지나 상대방의 번역이\n여기에 표시됩니다</string>
     <string name="interpret_empty_partner">아래에서 텍스트를 입력하면\n여기에 번역이 표시됩니다</string>
     <string name="interpret_input_hint">%1$s(으)로 입력하세요</string>
     <string name="translate_action_title">번역 모드로 이동</string>

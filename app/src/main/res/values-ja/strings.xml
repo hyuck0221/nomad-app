@@ -130,7 +130,7 @@
     <string name="translate_fullscreen">全画面表示</string>
     <string name="interpret_title">対面通訳</string>
     <string name="interpret_clear">会話をクリア</string>
-    <string name="interpret_empty_me">相手がマイクで話すと、\n翻訳がここに表示されます</string>
+    <string name="interpret_empty_me">あなたが送ったメッセージや翻訳が\nここに表示されます</string>
     <string name="interpret_empty_partner">下にテキストを入力すると、\n翻訳がここに表示されます</string>
     <string name="interpret_input_hint">%1$sで入力</string>
     <string name="translate_action_title">翻訳モードへ</string>

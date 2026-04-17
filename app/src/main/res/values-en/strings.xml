@@ -130,7 +130,7 @@
     <string name="translate_fullscreen">Full screen</string>
     <string name="interpret_title">Face-to-Face</string>
     <string name="interpret_clear">Clear conversation</string>
-    <string name="interpret_empty_me">When they speak into the mic,\nthe translation will appear here</string>
+    <string name="interpret_empty_me">Your sent messages and translations\nwill appear here</string>
     <string name="interpret_empty_partner">Type below and the translation\nwill appear here</string>
     <string name="interpret_input_hint">Type in %1$s</string>
     <string name="translate_action_title">Go to Translation</string>

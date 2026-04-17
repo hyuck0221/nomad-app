@@ -130,7 +130,7 @@
     <string name="translate_fullscreen">全屏显示</string>
     <string name="interpret_title">面对面口译</string>
     <string name="interpret_clear">清除对话</string>
-    <string name="interpret_empty_me">对方通过麦克风说话时，\n翻译将显示在这里</string>
+    <string name="interpret_empty_me">您发送的消息和翻译\n将显示在这里</string>
     <string name="interpret_empty_partner">在下方输入文字，\n翻译将显示在这里</string>
     <string name="interpret_input_hint">用%1$s输入</string>
     <string name="translate_action_title">前往翻译</string>
