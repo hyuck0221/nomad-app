@@ -20,8 +20,13 @@
     <string name="chat_input_placeholder">メッセージを入力…</string>
     <string name="chat_image_attached">画像を添付しました</string>
     <string name="chat_suggestion_1">📍 東京3日間の旅程を立てて</string>
-    <string name="chat_suggestion_2">💴 円の為替レートを教えて</string>
-    <string name="chat_suggestion_3">🍜 このメニューを翻訳して</string>
+    <string name="chat_suggestion_2">💴 今日の円レートを教えて</string>
+    <string name="chat_suggestion_3">🍜 このメニューを教えて</string>
+    <string name="chat_suggestion_4">🗺️ 空港から市内への行き方</string>
+    <string name="chat_suggestion_5">🏯 京都日帰りおすすめ</string>
+    <string name="chat_suggestion_6">🍣 日本で絶対食べたい料理</string>
+    <string name="chat_suggestion_7">💳 海外でのカード決済のコツ</string>
+    <string name="chat_suggestion_8">🧳 バックパック旅の持ち物</string>
     <string name="chat_settings_desc">設定</string>
     <string name="tool_label_menu_translate">· メニュー翻訳</string>
     <string name="tool_label_menu_search">· メニュー検索</string>

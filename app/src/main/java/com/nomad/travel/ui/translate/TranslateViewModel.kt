@@ -82,6 +82,7 @@ data class TranslateUiState(
     val targetLanguage: Language = languageByCode("en"),
     val sourceText: String = "",
     val translatedText: String = "",
+    val pronunciation: String = "",
     val isTranslating: Boolean = false,
     val isListening: Boolean = false,
     val showSourcePicker: Boolean = false,
@@ -145,7 +146,8 @@ class TranslateViewModel(
             sourceLanguage = it.targetLanguage,
             targetLanguage = it.sourceLanguage,
             sourceText = it.translatedText,
-            translatedText = it.sourceText
+            translatedText = it.sourceText,
+            pronunciation = ""
         )
     }
 
@@ -157,13 +159,29 @@ class TranslateViewModel(
         if (s.sourceText.isBlank() || s.isTranslating) return
         translateJob?.cancel()
         translateJob = viewModelScope.launch {
-            _translate.update { it.copy(isTranslating = true, translatedText = "") }
+            _translate.update {
+                it.copy(isTranslating = true, translatedText = "", pronunciation = "")
+            }
             gemma.ensureLoaded()
             val sysPrompt = buildTranslateSystemPrompt(s.sourceLanguage, s.targetLanguage)
             gemma.generateStream(sysPrompt, s.sourceText).collect { cumulative ->
                 _translate.update { it.copy(translatedText = cumulative) }
             }
+            val finalText = _translate.value.translatedText
             _translate.update { it.copy(isTranslating = false) }
+
+            val uiLang = Locale.getDefault().language
+            if (finalText.isNotBlank() && needsPronunciation(s.targetLanguage.code, uiLang)) {
+                val pron = runCatching {
+                    gemma.generate(
+                        systemInstruction = buildPronunciationSystemPrompt(s.targetLanguage, uiLang),
+                        userMessage = finalText
+                    ).trim()
+                }.getOrDefault("")
+                if (pron.isNotEmpty() && pron != finalText) {
+                    _translate.update { it.copy(pronunciation = pron) }
+                }
+            }
         }
     }
 
@@ -173,7 +191,7 @@ class TranslateViewModel(
     }
 
     fun clearTranslate() =
-        _translate.update { it.copy(sourceText = "", translatedText = "") }
+        _translate.update { it.copy(sourceText = "", translatedText = "", pronunciation = "") }
 
     /** Pre-set languages from chat tool tag navigation */
     fun presetTranslateLanguages(srcCode: String, tgtCode: String) {
@@ -371,6 +389,31 @@ Rules:
 - Do not add explanations, notes, or alternatives.
 - If the text contains proper nouns, transliterate them naturally for the target language.
 - Maintain the tone and register of the original text."""
+
+    /** Only ask for pronunciation when target and UI scripts are different enough to help the reader. */
+    private fun needsPronunciation(targetCode: String, uiCode: String): Boolean {
+        if (targetCode == uiCode) return false
+        // Same-script clusters — no transliteration needed between these pairs.
+        val latin = setOf(
+            "en", "es", "fr", "de", "it", "pt", "nl", "pl", "sv", "da", "fi",
+            "nb", "ro", "hu", "cs", "tr", "vi", "id", "ms", "tl", "sw", "uz"
+        )
+        if (targetCode in latin && uiCode in latin) return false
+        return true
+    }
+
+    private fun uiLangName(uiCode: String): String = SUPPORTED_LANGUAGES
+        .firstOrNull { it.code == uiCode }?.nameEn ?: "English"
+
+    private fun buildPronunciationSystemPrompt(target: Language, uiCode: String): String {
+        val uiLangEn = uiLangName(uiCode)
+        return """You are a pronunciation helper. Rewrite the given ${target.nameEn} text phonetically using ${uiLangEn} script, the way a ${uiLangEn} speaker would naturally read it aloud.
+Rules:
+- Output ONLY the phonetic transcription, nothing else.
+- No explanations, no quotes, no translations, no parentheses.
+- Keep it short, on a single line when possible.
+- Use standard ${uiLangEn} characters; do not invent symbols."""
+    }
 
     /* ── Factory ── */
 

@@ -53,7 +53,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -216,7 +216,7 @@ fun TranslateScreen(
                     highlight = state.isListening
                 ) {
                     Icon(
-                        imageVector = if (state.isListening) Icons.Default.MicOff else Icons.Default.Mic,
+                        imageVector = if (state.isListening) Icons.Outlined.Mic else Icons.Default.Mic,
                         contentDescription = stringResource(R.string.translate_mic),
                         tint = if (state.isListening) NomadGlow else NomadMist,
                         modifier = Modifier.size(20.dp)
@@ -284,10 +284,23 @@ fun TranslateScreen(
                         )
                     } else {
                         val displayText = if (state.isTranslating) state.translatedText + "▍" else state.translatedText
-                        Text(
-                            text = displayText,
-                            style = MaterialTheme.typography.bodyLarge.copy(color = NomadSilver, fontSize = 16.sp, lineHeight = 24.sp)
-                        )
+                        Column {
+                            Text(
+                                text = displayText,
+                                style = MaterialTheme.typography.bodyLarge.copy(color = NomadSilver, fontSize = 16.sp, lineHeight = 24.sp)
+                            )
+                            if (state.pronunciation.isNotBlank() && !state.isTranslating) {
+                                Spacer(Modifier.height(6.dp))
+                                Text(
+                                    text = state.pronunciation,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = NomadMuted,
+                                        fontSize = 13.sp,
+                                        lineHeight = 18.sp
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }

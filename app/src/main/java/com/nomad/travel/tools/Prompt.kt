@@ -35,7 +35,7 @@ object Prompt {
             "\n" +
             "TOOLS. DEFAULT = plain prose, NO tag. Emit a tag ONLY when its trigger below clearly " +
             "matches. At most ONE tag, at the very END of your reply, after a short natural sentence. " +
-            "The five tags below are the only ones allowed — never invent other XML-like tags or " +
+            "The three tags below are the only ones allowed — never invent other XML-like tags or " +
             "closing tags.\n" +
             "\n" +
             "<EXPENSE amount=\"N\" currency=\"ISO\" category=\"food|transport|stay|misc\" note=\"SHORT\">\n" +
@@ -64,39 +64,19 @@ object Prompt {
             "  When: you truly cannot continue without the user choosing among 2-4 mutually " +
             "exclusive options and no sensible default exists. Rare.\n" +
             "\n" +
-            "TRANSLATE vs INTERPRET — decide BEFORE emitting:\n" +
-            "  • TRANSLATE = user will TYPE text themselves and wants it converted. One person, one device.\n" +
-            "  • INTERPRET = user wants to have a LIVE CONVERSATION with another person who speaks a " +
-            "different language. Two people, face-to-face. Any mention of \"~사람/~인과 대화\", " +
-            "\"외국인과 말해야\", \"실시간 대화/통역\", \"talk with a ___\", \"speak to a ___\" ⇒ INTERPRET.\n" +
-            "\n" +
-            "<TRANSLATE src=\"XX\" tgt=\"YY\">  — 2-letter codes (ko, en, ja, zh, vi, es, fr, de, ...).\n" +
-            "  MUST emit when user asks to open/switch to/launch the translator " +
-            "(\"번역기 열어줘\", \"일본어 번역기\", \"영어 번역 모드\", \"중국어 번역기 켜줘\", \"open translator\"). " +
-            "Reply with one short sentence (\"번역기를 열게요.\") then the tag.\n" +
-            "  Lang inference: src = user's UI language; tgt = foreign language they named " +
-            "(일본어=ja, 영어=en, 중국어=zh, 베트남어=vi, 스페인어=es). If only one language is named, " +
-            "that is tgt.\n" +
-            "  Do NOT emit for: menu/OCR input; a one-off \"translate this: …\" (answer inline); " +
-            "chat merely mentioning translation; ANY case involving another person speaking to the user " +
-            "(that is INTERPRET).\n" +
-            "\n" +
-            "<INTERPRET src=\"XX\" tgt=\"YY\">  — 2-letter codes.\n" +
-            "  MUST emit when user wants real-time face-to-face interpretation with another person " +
-            "(\"일본인과 대화해야 해\", \"베트남 사람이랑 실시간으로 대화\", \"현지인과 말해야 해\", " +
-            "\"통역 모드 켜줘\", \"talk with a Vietnamese person\", \"start interpreter\"). " +
-            "Reply with one short sentence (\"통역 모드를 켤게요.\") then the tag. " +
-            "Lang inference: src = user's UI language; tgt = the other person's language " +
-            "(베트남 사람=vi, 일본인=ja, 중국인=zh, 미국인=en, 스페인 사람=es).\n" +
+            "TRANSLATION requests: if the user asks to translate some inline text " +
+            "(\"translate this: ...\", \"이거 영어로 번역해줘\"), answer INLINE — give the " +
+            "translation directly in the chat. Do NOT suggest opening any other screen. " +
+            "Never emit a tag for translation.\n" +
             "\n" +
             "MENU OCR (HIGHEST PRIORITY): if the user message contains a [MENU OCR] block, " +
             "you are translating a photographed restaurant menu. List each item as " +
             "\"original · translation · 1-line note\" in plain prose. " +
-            "Do NOT emit any tag in this case — not TRANSLATE, not INTERPRET, not CURRENCY. " +
+            "Do NOT emit any tag in this case — not CURRENCY. " +
             "This overrides every other rule above.\n" +
             "\n" +
             "MENU without image: if the user mentions 메뉴/menu/메뉴판 without providing an image, " +
-            "respond as normal chat (plain prose, no tag). Do NOT emit TRANSLATE. " +
+            "respond as normal chat (plain prose, no tag). " +
             "Briefly ask them to attach the menu photo if that seems to be their intent."
 
     private const val MID_CONVERSATION_RULE =

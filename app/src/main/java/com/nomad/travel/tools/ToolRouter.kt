@@ -173,19 +173,15 @@ class ToolRouter(
         val ask = ToolTags.extractAsk(raw)
         if (ask != null) tag = "ask"
 
-        val translate = ToolTags.extractTranslate(raw)
-        if (translate != null) tag = "translate"
-
-        val interpret = ToolTags.extractInterpret(raw)
-        if (interpret != null) tag = "interpret"
-
+        // Translate/Interpret tool tags are no longer emitted from chat; if the model
+        // hallucinates them we strip the text but ignore the tag.
         return PostResult(
             visibleText = ToolTags.stripAll(raw),
             toolTag = tag,
             currency = currency,
             ask = ask,
-            translate = translate,
-            interpret = interpret
+            translate = null,
+            interpret = null
         )
     }
 

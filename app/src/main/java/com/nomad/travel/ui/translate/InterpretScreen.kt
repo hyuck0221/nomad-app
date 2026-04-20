@@ -34,7 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -158,7 +158,7 @@ fun InterpretScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (state.isTheirMicActive) Icons.Default.MicOff else Icons.Default.Mic,
+                            imageVector = if (state.isTheirMicActive) Icons.Outlined.Mic else Icons.Default.Mic,
                             contentDescription = stringResource(R.string.translate_mic),
                             tint = if (state.isTheirMicActive) NomadGlow else NomadMist,
                             modifier = Modifier.size(24.dp)
@@ -399,7 +399,7 @@ fun InterpretScreen(
                         highlight = state.isMyMicActive
                     ) {
                         Icon(
-                            imageVector = if (state.isMyMicActive) Icons.Default.MicOff else Icons.Default.Mic,
+                            imageVector = if (state.isMyMicActive) Icons.Outlined.Mic else Icons.Default.Mic,
                             contentDescription = stringResource(R.string.translate_mic),
                             tint = if (state.isMyMicActive) NomadGlow else NomadMist,
                             modifier = Modifier.size(20.dp)

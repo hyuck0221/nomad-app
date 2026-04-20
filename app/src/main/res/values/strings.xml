@@ -21,7 +21,12 @@
     <string name="chat_image_attached">이미지 첨부됨</string>
     <string name="chat_suggestion_1">📍 도쿄 3일 코스 짜줘</string>
     <string name="chat_suggestion_2">💴 엔화 환율 알려줘</string>
-    <string name="chat_suggestion_3">🍜 이 메뉴판 번역해줘</string>
+    <string name="chat_suggestion_3">🍜 이 메뉴 뭔지 알려줘</string>
+    <string name="chat_suggestion_4">🗺️ 공항에서 시내 가는 법</string>
+    <string name="chat_suggestion_5">🏯 교토 당일치기 추천</string>
+    <string name="chat_suggestion_6">🍣 일본에서 꼭 먹어봐야 할 음식</string>
+    <string name="chat_suggestion_7">💳 해외 카드 결제 팁</string>
+    <string name="chat_suggestion_8">🧳 배낭 여행 짐 리스트</string>
     <string name="chat_settings_desc">설정</string>
     <string name="tool_label_menu_translate">· 메뉴 번역</string>
     <string name="tool_label_menu_search">· 메뉴 검색</string>

@@ -40,9 +40,7 @@ import java.util.Locale
 
 data class PendingAction(
     val currency: ToolTags.CurrencyCall? = null,
-    val ask: ToolTags.AskCall? = null,
-    val translate: ToolTags.TranslateCall? = null,
-    val interpret: ToolTags.InterpretCall? = null
+    val ask: ToolTags.AskCall? = null
 )
 
 data class ChatUiState(
@@ -51,7 +49,8 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val isResponding: Boolean = false,
     val isListening: Boolean = false,
-    val pending: PendingAction? = null
+    val pending: PendingAction? = null,
+    val pendingImage: Uri? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -69,6 +68,7 @@ class ChatViewModel(
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
     private val pending = MutableStateFlow<PendingAction?>(null)
+    private val pendingImage = MutableStateFlow<Uri?>(null)
     private var streamJob: Job? = null
     private var speechRecognizer: SpeechRecognizer? = null
 
@@ -93,8 +93,11 @@ class ChatViewModel(
             )
         },
         pending,
-        listening
-    ) { base, p, listen -> base.copy(pending = p, isListening = listen) }
+        listening,
+        pendingImage
+    ) { base, p, listen, img ->
+        base.copy(pending = p, isListening = listen, pendingImage = img)
+    }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
 
     init {
@@ -112,6 +115,7 @@ class ChatViewModel(
         if (currentSessionId.value == id) return
         overlay.value = null
         pending.value = null
+        pendingImage.value = null
         currentSessionId.value = id
         viewModelScope.launch { prefs.setLastSessionId(id) }
     }
@@ -120,6 +124,7 @@ class ChatViewModel(
         viewModelScope.launch {
             overlay.value = null
             pending.value = null
+            pendingImage.value = null
             val id = repo.createSession(DEFAULT_TITLE)
             currentSessionId.value = id
             prefs.setLastSessionId(id)
@@ -135,8 +140,17 @@ class ChatViewModel(
                 prefs.setLastSessionId(next)
                 overlay.value = null
                 pending.value = null
+                pendingImage.value = null
             }
         }
+    }
+
+    fun attachImage(uri: Uri?) {
+        pendingImage.value = uri
+    }
+
+    fun clearAttachedImage() {
+        pendingImage.value = null
     }
 
     fun send(context: Context, text: String, image: Uri?) {
@@ -145,6 +159,7 @@ class ChatViewModel(
         val sessionId = currentSessionId.value ?: return
 
         pending.value = null
+        pendingImage.value = null
 
         streamJob = viewModelScope.launch {
             val historySnapshot = repo.snapshotMessages(sessionId)
@@ -192,10 +207,6 @@ class ChatViewModel(
                                 pending.value = PendingAction(currency = evt.currency)
                             } else if (evt.ask != null) {
                                 pending.value = PendingAction(ask = evt.ask)
-                            } else if (evt.translate != null) {
-                                pending.value = PendingAction(translate = evt.translate)
-                            } else if (evt.interpret != null) {
-                                pending.value = PendingAction(interpret = evt.interpret)
                             }
                         }
                     }

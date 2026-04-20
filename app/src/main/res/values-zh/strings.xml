@@ -20,8 +20,13 @@
     <string name="chat_input_placeholder">输入消息…</string>
     <string name="chat_image_attached">已附加图片</string>
     <string name="chat_suggestion_1">📍 帮我规划东京三日游</string>
-    <string name="chat_suggestion_2">💴 查一下日元汇率</string>
-    <string name="chat_suggestion_3">🍜 翻译这张菜单</string>
+    <string name="chat_suggestion_2">💴 今天日元汇率多少？</string>
+    <string name="chat_suggestion_3">🍜 这菜单上都是什么？</string>
+    <string name="chat_suggestion_4">🗺️ 从机场到市区怎么走？</string>
+    <string name="chat_suggestion_5">🏯 京都一日游推荐</string>
+    <string name="chat_suggestion_6">🍣 在日本必吃的美食</string>
+    <string name="chat_suggestion_7">💳 海外刷卡小贴士</string>
+    <string name="chat_suggestion_8">🧳 背包旅行行李清单</string>
     <string name="chat_settings_desc">设置</string>
     <string name="tool_label_menu_translate">· 菜单翻译</string>
     <string name="tool_label_menu_search">· 菜单搜索</string>

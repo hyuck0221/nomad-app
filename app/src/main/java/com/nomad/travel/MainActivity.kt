@@ -137,8 +137,6 @@ class MainActivity : ComponentActivity() {
                         mutableStateOf(initial)
                     }
                     var menuArgs by remember { mutableStateOf<MenuViewArgs?>(null) }
-                    var translateLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
-                    var interpretLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
                     val scope = rememberCoroutineScope()
 
                     var fullscreenText by remember { mutableStateOf<String?>(null) }
@@ -202,15 +200,7 @@ class MainActivity : ComponentActivity() {
                                     destination = Destination.MENU_VIEW
                                 },
                                 onOpenTranslate = { destination = Destination.TRANSLATE },
-                                onOpenInterpret = { destination = Destination.INTERPRET },
-                                onOpenTranslateWithLangs = { src, tgt ->
-                                    translateLangs = Pair(src, tgt)
-                                    destination = Destination.TRANSLATE
-                                },
-                                onOpenInterpretWithLangs = { src, tgt ->
-                                    interpretLangs = Pair(src, tgt)
-                                    destination = Destination.INTERPRET
-                                }
+                                onOpenInterpret = { destination = Destination.INTERPRET }
                             )
                             Destination.SETTINGS -> SettingsScreen(
                                 onBack = { destination = Destination.CHAT }
@@ -227,29 +217,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                 }
                             }
-                            Destination.TRANSLATE -> {
-                                val langs = translateLangs
-                                TranslateScreen(
-                                    onBack = {
-                                        translateLangs = null
-                                        destination = Destination.CHAT
-                                    },
-                                    onFullscreen = { text -> fullscreenText = text },
-                                    presetSrc = langs?.first,
-                                    presetTgt = langs?.second
-                                )
-                            }
-                            Destination.INTERPRET -> {
-                                val langs = interpretLangs
-                                InterpretScreen(
-                                    onBack = {
-                                        interpretLangs = null
-                                        destination = Destination.CHAT
-                                    },
-                                    presetSrc = langs?.first,
-                                    presetTgt = langs?.second
-                                )
-                            }
+                            Destination.TRANSLATE -> TranslateScreen(
+                                onBack = { destination = Destination.CHAT },
+                                onFullscreen = { text -> fullscreenText = text }
+                            )
+                            Destination.INTERPRET -> InterpretScreen(
+                                onBack = { destination = Destination.CHAT }
+                            )
                         }
                     }
 

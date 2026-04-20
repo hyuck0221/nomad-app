@@ -20,8 +20,13 @@
     <string name="chat_input_placeholder">Type a message…</string>
     <string name="chat_image_attached">Image attached</string>
     <string name="chat_suggestion_1">📍 Plan a 3-day Tokyo trip</string>
-    <string name="chat_suggestion_2">💴 Show me JPY exchange rate</string>
-    <string name="chat_suggestion_3">🍜 Translate this menu</string>
+    <string name="chat_suggestion_2">💴 What is the JPY rate today?</string>
+    <string name="chat_suggestion_3">🍜 What is on this menu?</string>
+    <string name="chat_suggestion_4">🗺️ How do I get from the airport to downtown?</string>
+    <string name="chat_suggestion_5">🏯 Kyoto day-trip ideas</string>
+    <string name="chat_suggestion_6">🍣 Must-try foods in Japan</string>
+    <string name="chat_suggestion_7">💳 Tips for paying abroad with a card</string>
+    <string name="chat_suggestion_8">🧳 Backpacking packing list</string>
     <string name="chat_settings_desc">Settings</string>
     <string name="tool_label_menu_translate">· Menu translation</string>
     <string name="tool_label_menu_search">· Menu search</string>
