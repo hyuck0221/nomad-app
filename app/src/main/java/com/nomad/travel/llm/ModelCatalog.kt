@@ -13,6 +13,9 @@ data class ModelEntry(
     val sizeBytes: Long,
     val url: String,
     val fileName: String,
+    val companionFiles: List<ModelFile> = emptyList(),
+    val archiveUrl: String? = null,
+    val archiveRoot: String? = null,
     val recommended: Boolean,
     /** Code-side fallback tagline; used when [taglineResId] is 0. */
     val tagline: String,
@@ -22,6 +25,12 @@ data class ModelEntry(
     val minRamBytes: Long = 0L,
     /** Soft warning — below this the UI surfaces a performance advisory. 0 = no warning. */
     val warnRamBytes: Long = 0L
+)
+
+data class ModelFile(
+    val url: String,
+    val fileName: String,
+    val sizeBytes: Long = 0L
 )
 
 object ModelCatalog {

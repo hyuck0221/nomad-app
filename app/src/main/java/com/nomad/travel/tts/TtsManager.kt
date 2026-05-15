@@ -16,16 +16,14 @@ import java.io.File
  * Routes [TtsEngine.speak] calls to the right backend based on the user's
  * preference and language support.
  *
- * Routing rules:
- *  - Korean (`ko`) — always system engine. Kokoro v1.0 has no Korean voice.
- *  - Other languages — Kokoro if user opted in AND the engine reports ready,
- *    otherwise fall back to system.
+ * Routing rule: use local mobile AI TTS only when the selected language has its own
+ * downloaded model. Otherwise fall back to Android's system TTS.
  */
 class TtsManager(
     context: Context,
     private val prefs: UserPrefs,
     val systemEngine: SystemTtsEngine = SystemTtsEngine(context),
-    val kokoroEngine: KokoroTtsEngine = KokoroTtsEngine(context)
+    val meloEngine: MeloTtsEngine = MeloTtsEngine(context)
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -40,13 +38,22 @@ class TtsManager(
     init {
         scope.launch {
             prefs.ttsEngine.collect { id ->
-                preferredEngineId.value = id ?: SystemTtsEngine.ID
+                preferredEngineId.value = when (id) {
+                    MeloTtsEngine.ID,
+                    MeloTtsEngine.LEGACY_KOKORO_ID -> MeloTtsEngine.ID
+                    else -> SystemTtsEngine.ID
+                }
+            }
+        }
+        scope.launch {
+            prefs.activeTtsModelId.collect { id ->
+                meloEngine.setPreferredModel(id)
             }
         }
         // Wire engine completion → manager-level callback.
         val forward: () -> Unit = { onSpeakComplete?.invoke() }
         systemEngine.onCompletion = forward
-        kokoroEngine.onCompletion = forward
+        meloEngine.onCompletion = forward
     }
 
     fun speak(text: String, languageCode: String) {
@@ -56,14 +63,27 @@ class TtsManager(
         engine.speak(text, languageCode)
     }
 
+    fun speakQueued(text: String, languageCode: String) {
+        if (text.isBlank()) return
+        val engine = pickEngine(languageCode)
+        lastEngine = engine
+        if (engine === systemEngine) {
+            systemEngine.speakQueued(text, languageCode)
+        } else if (engine === meloEngine) {
+            meloEngine.speakQueued(text, languageCode)
+        } else {
+            engine.speak(text, languageCode)
+        }
+    }
+
     fun stop() {
         systemEngine.stop()
-        kokoroEngine.stop()
+        meloEngine.stop()
     }
 
     fun shutdown() {
         systemEngine.shutdown()
-        kokoroEngine.shutdown()
+        meloEngine.shutdown()
     }
 
     suspend fun setPreferredEngine(id: String) {
@@ -71,22 +91,25 @@ class TtsManager(
     }
 
     /** Filesystem location where the downloader should place [entry]. */
-    fun fileFor(entry: ModelEntry): File = kokoroEngine.fileFor(entry)
+    fun fileFor(entry: ModelEntry): File = meloEngine.fileFor(entry)
 
     fun isModelDownloaded(entry: ModelEntry): Boolean =
-        kokoroEngine.isModelDownloaded(entry)
+        meloEngine.isModelDownloaded(entry)
 
-    fun deleteModel(entry: ModelEntry): Boolean = kokoroEngine.delete(entry)
+    fun isModelUsable(entry: ModelEntry): Boolean =
+        meloEngine.isModelUsable(entry)
+
+    fun deleteModel(entry: ModelEntry): Boolean = meloEngine.delete(entry)
+
+    fun isMeloReadyForLanguage(languageCode: String): Boolean =
+        meloEngine.isReadyForLanguage(languageCode)
 
     private fun pickEngine(languageCode: String): TtsEngine {
-        val ko = languageCode.equals("ko", ignoreCase = true)
-        if (ko) return systemEngine
         val pref = preferredEngineId.value
-        if (pref == KokoroTtsEngine.ID &&
-            kokoroEngine.isReady() &&
-            kokoroEngine.supportsLanguage(languageCode)
+        if (pref == MeloTtsEngine.ID &&
+            meloEngine.isReadyForLanguage(languageCode)
         ) {
-            return kokoroEngine
+            return meloEngine
         }
         return systemEngine
     }

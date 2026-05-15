@@ -54,8 +54,9 @@ private const val APACHE_2_0_URL = "https://www.apache.org/licenses/LICENSE-2.0"
 private const val ANDROID_SDK_TERMS_URL = "https://developer.android.com/studio/terms"
 private const val MLKIT_TERMS_URL = "https://developers.google.com/ml-kit/terms"
 private const val GEMMA_TERMS_URL = "https://ai.google.dev/gemma/terms"
-private const val KOKORO_MODEL_URL = "https://huggingface.co/hexgrad/Kokoro-82M"
-private const val MELOTTS_LICENSE_URL = "https://github.com/myshell-ai/MeloTTS/blob/main/LICENSE"
+private const val SHERPA_ONNX_URL = "https://github.com/k2-fsa/sherpa-onnx"
+private const val SUPERTONIC_LICENSE_URL = "https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE"
+private const val ONNXRUNTIME_URL = "https://github.com/microsoft/onnxruntime"
 
 private val APACHE = "Apache License 2.0"
 private val MIT = "MIT License"
@@ -78,8 +79,9 @@ private val LIBRARIES = listOf(
     LicenseEntry("Play App Update", "Google LLC", "Android Software Development Kit License", ANDROID_SDK_TERMS_URL),
     LicenseEntry("Play Install Referrer", "Google LLC", "Android Software Development Kit License", ANDROID_SDK_TERMS_URL),
     LicenseEntry("Gemma (AI Model)", "Google LLC", "Gemma Terms of Use", GEMMA_TERMS_URL),
-    LicenseEntry("Kokoro-82M (TTS Model)", "hexgrad", APACHE, KOKORO_MODEL_URL),
-    LicenseEntry("MeloTTS-Korean (TTS Model)", "MyShell.ai", MIT, MELOTTS_LICENSE_URL),
+    LicenseEntry("sherpa-onnx", "k2-fsa", APACHE, SHERPA_ONNX_URL),
+    LicenseEntry("ONNX Runtime", "Microsoft", MIT, ONNXRUNTIME_URL),
+    LicenseEntry("Supertonic 3 (Voice Model)", "Supertone Inc.", "OpenRAIL", SUPERTONIC_LICENSE_URL),
 )
 
 @Composable

@@ -79,7 +79,6 @@ import com.nomad.travel.R
 import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.tools.ContextStrategy
-import com.nomad.travel.tts.KokoroTtsEngine
 import com.nomad.travel.tts.SystemTtsEngine
 import com.nomad.travel.tts.TtsModelCatalog
 import com.nomad.travel.ui.setup.ModelCard
@@ -98,12 +97,20 @@ private const val TERMS_OF_SERVICE_URL = "https://nomad-ai-android.github.io/ter
 
 private data class LangOption(val code: String, val label: String, val flag: String)
 
+private enum class UpgradeDialogTarget {
+    Text,
+    Voice
+}
+
 private val LANGS = listOf(
     LangOption("ko", "한국어", "🇰🇷"),
     LangOption("en", "English", "🇺🇸"),
     LangOption("zh", "中文", "🇨🇳"),
     LangOption("ja", "日本語", "🇯🇵")
 )
+
+private fun languageLabelFor(code: String): String =
+    LANGS.firstOrNull { it.code == code }?.label ?: code.uppercase()
 
 @Composable
 fun SettingsScreen(
@@ -118,9 +125,10 @@ fun SettingsScreen(
     var confirmClear by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
     var pendingTtsDelete by remember { mutableStateOf<ModelEntry?>(null) }
+    var pendingTtsLanguageChange by remember { mutableStateOf<ModelEntry?>(null) }
     var pendingCancel by remember { mutableStateOf<ModelEntry?>(null) }
     var languageExpanded by rememberSaveable { mutableStateOf(false) }
-    var showUpgradeDialog by rememberSaveable { mutableStateOf(false) }
+    var upgradeDialogTarget by rememberSaveable { mutableStateOf<UpgradeDialogTarget?>(null) }
     var contextExpanded by rememberSaveable { mutableStateOf(false) }
     var showLicenses by rememberSaveable { mutableStateOf(false) }
 
@@ -304,38 +312,84 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_model_management),
                 icon = Icons.Default.SmartToy
             ) {
-                val primaryRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E2B.id }
-
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    primaryRow?.let { row ->
-                        ModelCard(
-                            row = row,
-                            active = row.entry.id == state.activeModelId && row.downloaded,
-                            onSelect = { vm.selectModel(row.entry) },
-                            onDownload = { vm.startDownload(row.entry) },
-                            onCancel = { pendingCancel = row.entry },
-                            onDelete = { pendingDelete = row.entry }
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.settings_model_llm_group),
+                        style = MaterialTheme.typography.labelMedium.copy(color = NomadMuted),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    state.modelRows
+                        .filter { it.entry.id == ModelCatalog.recommended.id }
+                        .forEach { row ->
+                            ModelCard(
+                                row = row,
+                                active = row.entry.id == state.activeModelId && row.downloaded,
+                                onSelect = { vm.selectModel(row.entry) },
+                                onDownload = { vm.startDownload(row.entry) },
+                                onCancel = { pendingCancel = row.entry },
+                                onDelete = { pendingDelete = row.entry }
+                            )
+                        }
+                    state.modelRows
+                        .filter {
+                            it.entry.id != ModelCatalog.recommended.id &&
+                                it.entry.id == state.activeModelId &&
+                                it.downloaded
+                        }
+                        .forEach { row ->
+                            ModelCard(
+                                row = row,
+                                active = true,
+                                onSelect = { vm.selectModel(row.entry) },
+                                onDownload = { vm.startDownload(row.entry) },
+                                onCancel = { pendingCancel = row.entry },
+                                onDelete = { pendingDelete = row.entry }
+                            )
+                        }
+                    UpgradeButton(onClick = { upgradeDialogTarget = UpgradeDialogTarget.Text })
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 2.dp),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Text(
-                            text = stringResource(R.string.settings_model_upgrade_link),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = NomadGlow,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable { showUpgradeDialog = true }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
-                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.settings_model_tts_group),
+                        style = MaterialTheme.typography.labelMedium.copy(color = NomadMuted),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    val selectedTtsDownloaded = state.ttsModelRows.firstOrNull {
+                        it.entry.id == state.activeTtsModelId
+                    }?.downloaded == true
+                    val upgradedTtsSelected = state.ttsEngineId != SystemTtsEngine.ID &&
+                        selectedTtsDownloaded
+                    TtsEngineRow(
+                        title = stringResource(R.string.settings_model_internal_tts_name),
+                        body = stringResource(R.string.settings_model_internal_tts_body),
+                        selected = !upgradedTtsSelected,
+                        enabled = true,
+                        onClick = { vm.setTtsEngine(SystemTtsEngine.ID) }
+                    )
+                    state.ttsModelRows
+                        .filter {
+                            upgradedTtsSelected &&
+                                it.entry.id == state.activeTtsModelId &&
+                                it.downloaded
+                        }
+                        .forEach { row ->
+                            ModelCard(
+                                row = row,
+                                active = true,
+                                onSelect = {
+                                    val targetLanguage = TtsModelCatalog.languageFor(row.entry)
+                                    if (targetLanguage != null && targetLanguage != state.language) {
+                                        pendingTtsLanguageChange = row.entry
+                                    } else {
+                                        vm.selectTtsModel(row.entry)
+                                    }
+                                },
+                                onDownload = { vm.startTtsDownload(row.entry) },
+                                onCancel = { vm.cancelTtsDownload(row.entry) },
+                                onDelete = { pendingTtsDelete = row.entry }
+                            )
+                        }
+                    UpgradeButton(onClick = { upgradeDialogTarget = UpgradeDialogTarget.Voice })
                 }
             }
 
@@ -345,62 +399,6 @@ fun SettingsScreen(
                 icon = Icons.Default.GraphicEq
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Engine selector
-                    Text(
-                        text = stringResource(R.string.settings_tts_engine),
-                        style = MaterialTheme.typography.labelMedium.copy(color = NomadMuted),
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                    TtsEngineRow(
-                        title = stringResource(R.string.settings_tts_engine_system),
-                        body = stringResource(R.string.settings_tts_engine_system_body),
-                        selected = state.ttsEngineId == SystemTtsEngine.ID,
-                        enabled = true,
-                        onClick = { vm.setTtsEngine(SystemTtsEngine.ID) }
-                    )
-                    val neuralAvailable = state.ttsModelRows
-                        .firstOrNull { it.entry.id == TtsModelCatalog.forLanguage(state.language).id }
-                        ?.downloaded == true
-                    TtsEngineRow(
-                        title = stringResource(R.string.settings_tts_engine_kokoro),
-                        body = stringResource(R.string.settings_tts_engine_kokoro_body),
-                        selected = state.ttsEngineId == KokoroTtsEngine.ID,
-                        enabled = neuralAvailable,
-                        onClick = { vm.setTtsEngine(KokoroTtsEngine.ID) }
-                    )
-
-                    // Neural model card — Kokoro for non-Korean UIs, a Korean-
-                    // specific model when the UI is Korean.
-                    val targetEntryId = TtsModelCatalog.forLanguage(state.language).id
-                    val activeRow = state.ttsModelRows.firstOrNull {
-                        it.entry.id == targetEntryId
-                    }
-                    activeRow?.let { row ->
-                        Spacer(Modifier.height(2.dp))
-                        ModelCard(
-                            row = row,
-                            active = state.ttsEngineId == KokoroTtsEngine.ID && row.downloaded,
-                            onSelect = {
-                                if (row.downloaded) vm.setTtsEngine(KokoroTtsEngine.ID)
-                            },
-                            onDownload = { vm.startTtsDownload(row.entry) },
-                            onCancel = { vm.cancelTtsDownload(row.entry) },
-                            onDelete = { pendingTtsDelete = row.entry }
-                        )
-                        if (row.downloaded) {
-                            Text(
-                                text = stringResource(R.string.settings_tts_kokoro_preview),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = NomadMist,
-                                    lineHeight = 16.sp
-                                ),
-                                modifier = Modifier.padding(horizontal = 4.dp)
-                            )
-                        }
-                    }
-
-                    // Voice loop switch
-                    Spacer(Modifier.height(2.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -679,37 +677,105 @@ fun SettingsScreen(
         )
     }
 
-    if (showUpgradeDialog) {
-        val upgradeRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E4B.id }
+    upgradeDialogTarget?.let { target ->
+        val textUpgradeRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E4B.id }
         AlertDialog(
-            onDismissRequest = { showUpgradeDialog = false },
+            onDismissRequest = { upgradeDialogTarget = null },
             title = { Text(stringResource(R.string.setup_upgrade_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = stringResource(R.string.setup_upgrade_desc),
+                        text = stringResource(
+                            if (target == UpgradeDialogTarget.Voice) {
+                                R.string.settings_voice_model_upgrade_desc
+                            } else {
+                                R.string.setup_upgrade_desc
+                            }
+                        ),
                         style = MaterialTheme.typography.bodySmall.copy(color = NomadMist)
                     )
-                    upgradeRow?.let { row ->
-                        ModelCard(
-                            row = row,
-                            active = row.entry.id == state.activeModelId && row.downloaded,
-                            onSelect = { vm.selectModel(row.entry) },
-                            onDownload = { vm.startDownload(row.entry) },
-                            onCancel = {
-                                showUpgradeDialog = false
-                                pendingCancel = row.entry
-                            },
-                            onDelete = {
-                                showUpgradeDialog = false
-                                pendingDelete = row.entry
+                    when (target) {
+                        UpgradeDialogTarget.Text -> {
+                            textUpgradeRow?.let { row ->
+                                ModelCard(
+                                    row = row,
+                                    active = row.entry.id == state.activeModelId && row.downloaded,
+                                    onSelect = { vm.selectModel(row.entry) },
+                                    onDownload = { vm.startDownload(row.entry) },
+                                    onCancel = {
+                                        upgradeDialogTarget = null
+                                        pendingCancel = row.entry
+                                    },
+                                    onDelete = {
+                                        upgradeDialogTarget = null
+                                        pendingDelete = row.entry
+                                    }
+                                )
                             }
-                        )
+                        }
+
+                        UpgradeDialogTarget.Voice -> {
+                            state.ttsModelRows.forEach { row ->
+                                ModelCard(
+                                    row = row,
+                                    active = state.ttsEngineId != SystemTtsEngine.ID &&
+                                        row.entry.id == state.activeTtsModelId &&
+                                        row.downloaded,
+                                    onSelect = {
+                                        val targetLanguage = TtsModelCatalog.languageFor(row.entry)
+                                        if (targetLanguage != null && targetLanguage != state.language) {
+                                            pendingTtsLanguageChange = row.entry
+                                        } else {
+                                            vm.selectTtsModel(row.entry)
+                                        }
+                                    },
+                                    onDownload = { vm.startTtsDownload(row.entry) },
+                                    onCancel = { vm.cancelTtsDownload(row.entry) },
+                                    onDelete = {
+                                        upgradeDialogTarget = null
+                                        pendingTtsDelete = row.entry
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showUpgradeDialog = false }) {
+                TextButton(onClick = { upgradeDialogTarget = null }) {
+                    Text(stringResource(R.string.common_ok))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    pendingTtsLanguageChange?.let { entry ->
+        val targetLanguage = TtsModelCatalog.languageFor(entry).orEmpty()
+        AlertDialog(
+            onDismissRequest = { pendingTtsLanguageChange = null },
+            title = { Text(stringResource(R.string.settings_tts_language_change_title)) },
+            text = {
+                Text(
+                    text = stringResource(
+                        R.string.settings_tts_language_change_body,
+                        languageLabelFor(targetLanguage)
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.selectTtsModel(entry)
+                    pendingTtsLanguageChange = null
+                    upgradeDialogTarget = null
+                }) {
+                    Text(stringResource(R.string.common_ok))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingTtsLanguageChange = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -922,6 +988,28 @@ private fun TtsEngineRow(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun UpgradeButton(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Text(
+            text = stringResource(R.string.settings_model_upgrade_link),
+            style = MaterialTheme.typography.labelMedium.copy(
+                color = NomadGlow,
+                fontWeight = FontWeight.SemiBold
+            ),
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        )
     }
 }
 

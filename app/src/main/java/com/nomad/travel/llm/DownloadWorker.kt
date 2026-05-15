@@ -12,8 +12,10 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.nomad.travel.R
-import kotlinx.coroutines.flow.collect
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
+import java.io.FileInputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -28,16 +30,59 @@ class DownloadWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val url = inputData.getString(KEY_URL) ?: return Result.failure()
-        val destPath = inputData.getString(KEY_DEST) ?: return Result.failure()
-        val dest = File(destPath)
+        val urls = inputData.getStringArray(KEY_URLS)
+            ?: arrayOf(inputData.getString(KEY_URL) ?: return Result.failure())
+        val destPaths = inputData.getStringArray(KEY_DESTS)
+            ?: arrayOf(inputData.getString(KEY_DEST) ?: return Result.failure())
+        if (urls.size != destPaths.size) return Result.failure()
 
-        setForeground(buildForegroundInfo(0, 0))
+        setForeground(buildForegroundInfo(0, 0, PHASE_DOWNLOADING))
 
         return runCatching {
-            streamDownload(url, dest) { downloaded, total ->
-                setProgress(workDataOf(PROGRESS_DOWNLOADED to downloaded, PROGRESS_TOTAL to total))
-                setForeground(buildForegroundInfo(downloaded, total))
+            var completedBytes = 0L
+            var lastForegroundAt = 0L
+            val expectedTotal = inputData.getLong(KEY_EXPECTED_TOTAL, 0L)
+            suspend fun publishProgress(
+                downloaded: Long,
+                total: Long,
+                phase: String,
+                forceForeground: Boolean = false
+            ) {
+                setProgress(
+                    workDataOf(
+                        PROGRESS_DOWNLOADED to downloaded,
+                        PROGRESS_TOTAL to total,
+                        PROGRESS_PHASE to phase
+                    )
+                )
+                val now = System.currentTimeMillis()
+                if (forceForeground || now - lastForegroundAt > FOREGROUND_UPDATE_INTERVAL_MS) {
+                    setForeground(buildForegroundInfo(downloaded, total, phase))
+                    lastForegroundAt = now
+                }
+            }
+            urls.zip(destPaths).forEach { (url, destPath) ->
+                val dest = File(destPath)
+                streamDownload(url, dest) { downloaded, total ->
+                    val overallDone = completedBytes + downloaded
+                    val overallTotal = if (expectedTotal > 0) expectedTotal else completedBytes + total
+                    publishProgress(overallDone, overallTotal, PHASE_DOWNLOADING)
+                }
+                if (isStopped) error("download cancelled")
+                completedBytes += dest.length()
+            }
+            val archiveRoot = inputData.getString(KEY_ARCHIVE_ROOT)
+            val archiveDest = inputData.getString(KEY_ARCHIVE_DEST)?.let(::File)
+            val archiveTargetDir = inputData.getString(KEY_ARCHIVE_TARGET_DIR)?.let(::File)
+            if (archiveRoot != null && archiveDest != null && archiveTargetDir != null) {
+                val extractTotal = completedBytes + archiveDest.length()
+                publishProgress(completedBytes, extractTotal, PHASE_INSTALLING, forceForeground = true)
+                extractTarBz2(archiveDest, archiveTargetDir, archiveRoot) { read ->
+                    val done = (completedBytes + read).coerceAtMost(extractTotal)
+                    publishProgress(done, extractTotal, PHASE_INSTALLING)
+                }
+                if (isStopped) error("download cancelled")
+                archiveDest.delete()
             }
             Result.success()
         }.getOrElse { e ->
@@ -73,7 +118,7 @@ class DownloadWorker(
 
             conn.inputStream.use { input ->
                 java.io.FileOutputStream(part, resumed).use { out ->
-                    val buf = ByteArray(1 shl 16)
+                    val buf = ByteArray(IO_BUFFER_SIZE)
                     var downloaded = if (resumed) startByte else 0L
                     var lastEmit = 0L
                     while (!isStopped) {
@@ -91,14 +136,87 @@ class DownloadWorker(
                 }
             }
 
-            if (isStopped) return
+            if (isStopped) error("download cancelled")
             if (!part.renameTo(dest)) error("rename failed")
         } finally {
             conn.disconnect()
         }
     }
 
-    private fun buildForegroundInfo(downloaded: Long, total: Long): ForegroundInfo {
+    private suspend fun extractTarBz2(
+        archive: File,
+        targetDir: File,
+        root: String,
+        onProgress: suspend (Long) -> Unit
+    ) {
+        val canonicalTarget = targetDir.canonicalFile
+        targetDir.mkdirs()
+        CountingInputStream(FileInputStream(archive)).use { fileIn ->
+            var lastEmit = 0L
+            BZip2CompressorInputStream(fileIn, true).use { bzIn ->
+                TarArchiveInputStream(bzIn).use { tarIn ->
+                    while (true) {
+                        if (isStopped) return
+                        val entry = tarIn.nextEntry ?: break
+                        if (!entry.name.startsWith("$root/")) continue
+                        val relative = entry.name.removePrefix("$root/").trimStart('/')
+                        if (relative.isBlank()) continue
+                        val out = File(targetDir, relative).canonicalFile
+                        if (!out.path.startsWith(canonicalTarget.path)) {
+                            error("Unsafe archive path: ${entry.name}")
+                        }
+                        if (entry.isDirectory) {
+                            out.mkdirs()
+                        } else {
+                            out.parentFile?.mkdirs()
+                            out.outputStream().use { output ->
+                                val buffer = ByteArray(IO_BUFFER_SIZE)
+                                while (!isStopped) {
+                                    val n = tarIn.read(buffer)
+                                    if (n <= 0) break
+                                    output.write(buffer, 0, n)
+                                    val now = System.currentTimeMillis()
+                                    if (now - lastEmit > 500) {
+                                        onProgress(fileIn.bytesRead)
+                                        lastEmit = now
+                                    }
+                                }
+                            }
+                        }
+                        val now = System.currentTimeMillis()
+                        if (now - lastEmit > 500) {
+                            onProgress(fileIn.bytesRead)
+                            lastEmit = now
+                        }
+                    }
+                }
+            }
+            onProgress(fileIn.bytesRead)
+        }
+    }
+
+    private class CountingInputStream(
+        private val delegate: FileInputStream
+    ) : java.io.InputStream() {
+        var bytesRead: Long = 0L
+            private set
+
+        override fun read(): Int {
+            val b = delegate.read()
+            if (b >= 0) bytesRead++
+            return b
+        }
+
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            val n = delegate.read(buffer, offset, length)
+            if (n > 0) bytesRead += n
+            return n
+        }
+
+        override fun close() = delegate.close()
+    }
+
+    private fun buildForegroundInfo(downloaded: Long, total: Long, phase: String): ForegroundInfo {
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -113,8 +231,10 @@ class DownloadWorker(
         val mbDone = downloaded / (1024 * 1024)
         val mbTotal = total / (1024 * 1024)
 
+        val title = if (phase == PHASE_INSTALLING) "모델 설치 중" else "모델 다운로드"
+
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
-            .setContentTitle("Gemma 4 E2B 다운로드")
+            .setContentTitle(title)
             .setContentText(if (total > 0) "$mbDone / $mbTotal MB ($pct%)" else "연결 중…")
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
@@ -136,12 +256,61 @@ class DownloadWorker(
 
         const val KEY_URL = "url"
         const val KEY_DEST = "dest"
+        const val KEY_URLS = "urls"
+        const val KEY_DESTS = "dests"
+        const val KEY_EXPECTED_TOTAL = "expected_total"
         const val KEY_ERROR = "error"
+        const val KEY_ARCHIVE_ROOT = "archive_root"
+        const val KEY_ARCHIVE_DEST = "archive_dest"
+        const val KEY_ARCHIVE_TARGET_DIR = "archive_target_dir"
 
         const val PROGRESS_DOWNLOADED = "downloaded"
         const val PROGRESS_TOTAL = "total"
+        const val PROGRESS_PHASE = "phase"
+        const val PHASE_DOWNLOADING = "downloading"
+        const val PHASE_INSTALLING = "installing"
 
-        fun inputData(url: String, dest: File): Data =
-            workDataOf(KEY_URL to url, KEY_DEST to dest.absolutePath)
+        private const val IO_BUFFER_SIZE = 256 * 1024
+        private const val FOREGROUND_UPDATE_INTERVAL_MS = 1_500L
+
+        fun inputData(entry: ModelEntry, dest: File): Data {
+            val baseDir = dest.parentFile ?: File("")
+            val archiveUrl = entry.archiveUrl
+            val archiveRoot = entry.archiveRoot
+            val archiveDest = File(baseDir, "model.tar.bz2")
+            val urls = if (archiveUrl != null && archiveRoot != null) {
+                arrayOf(archiveUrl)
+            } else {
+                buildList {
+                    add(entry.url)
+                    entry.companionFiles.forEach { add(it.url) }
+                }.toTypedArray()
+            }
+            val dests = if (archiveUrl != null && archiveRoot != null) {
+                arrayOf(archiveDest.absolutePath)
+            } else {
+                buildList {
+                    add(dest.absolutePath)
+                    entry.companionFiles.forEach { add(File(baseDir, it.fileName).absolutePath) }
+                }.toTypedArray()
+            }
+            val payloadTotal = entry.sizeBytes + entry.companionFiles.sumOf { it.sizeBytes }
+            val total = if (archiveUrl != null && archiveRoot != null) {
+                payloadTotal * 2
+            } else {
+                payloadTotal
+            }
+            val data = mutableMapOf<String, Any>(
+                KEY_URLS to urls,
+                KEY_DESTS to dests,
+                KEY_EXPECTED_TOTAL to total
+            )
+            if (archiveUrl != null && archiveRoot != null) {
+                data[KEY_ARCHIVE_ROOT] = archiveRoot
+                data[KEY_ARCHIVE_DEST] = archiveDest.absolutePath
+                data[KEY_ARCHIVE_TARGET_DIR] = baseDir.absolutePath
+            }
+            return workDataOf(*data.map { it.key to it.value }.toTypedArray())
+        }
     }
 }

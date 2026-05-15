@@ -2,7 +2,7 @@ package com.nomad.travel.tts
 
 /**
  * Pluggable text-to-speech engine. Implementations: [SystemTtsEngine] (Android default),
- * [KokoroTtsEngine] (on-device neural). Routing happens in [TtsManager].
+ * [MeloTtsEngine] (on-device neural). Routing happens in [TtsManager].
  */
 interface TtsEngine {
 

@@ -20,6 +20,7 @@ import com.nomad.travel.tools.ContextStrategy
 import com.nomad.travel.tts.SystemTtsEngine
 import com.nomad.travel.tts.TtsManager
 import com.nomad.travel.tts.TtsModelCatalog
+import com.nomad.travel.tts.MeloTtsEngine
 import com.nomad.travel.ui.setup.ModelRow
 import com.nomad.travel.update.UpdateManager
 import com.nomad.travel.update.UpdateState
@@ -41,6 +42,7 @@ data class SettingsUiState(
     val autoUpdateCheck: Boolean = true,
     val cameraInstantPreview: Boolean = false,
     val ttsEngineId: String = SystemTtsEngine.ID,
+    val activeTtsModelId: String? = null,
     val ttsModelRows: List<ModelRow> = emptyList(),
     val voiceLoopEnabled: Boolean = true
 )
@@ -77,9 +79,10 @@ class SettingsViewModel(
 
     private val ttsPrefsFlow = combine(
         prefs.ttsEngine,
+        prefs.activeTtsModelId,
         prefs.voiceLoopEnabled,
         prefs.autoUpdateCheck
-    ) { engine, loop, auto -> Triple(engine, loop, auto) }
+    ) { engine, activeTtsModelId, loop, auto -> listOf(engine, activeTtsModelId, loop, auto) }
 
     private val statusBundleFlow = combine(
         statusesFlow,
@@ -92,13 +95,16 @@ class SettingsViewModel(
         statusBundleFlow,
         refreshTick,
         updateManager.state
-    ) { base, ttsTriple, statusBundle, _, uState ->
+    ) { base, ttsPrefs, statusBundle, _, uState ->
         val lang = base[0] as String?
         val prompt = base[1] as String?
         val activeId = base[2] as String?
         val strategy = base[3] as String?
         val cameraInstant = base[4] as Boolean
-        val (ttsEngineId, voiceLoop, autoUpdate) = ttsTriple
+        val ttsEngineId = ttsPrefs[0] as String?
+        val activeTtsModelId = ttsPrefs[1] as String?
+        val voiceLoop = ttsPrefs[2] as Boolean
+        val autoUpdate = ttsPrefs[3] as Boolean
         val (llmStatuses, ttsStatuses) = statusBundle
 
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
@@ -119,6 +125,25 @@ class SettingsViewModel(
                 ramWarning = device.shouldWarn(entry)
             )
         }
+        val normalizedTtsEngineId = when (ttsEngineId) {
+            MeloTtsEngine.ID,
+            MeloTtsEngine.LEGACY_KOKORO_ID -> MeloTtsEngine.ID
+            else -> SystemTtsEngine.ID
+        }
+        val currentTtsEntry = TtsModelCatalog.byId(activeTtsModelId)
+            ?.takeIf { TtsModelCatalog.supportsLanguage(it, lang ?: "ko") }
+            ?: TtsModelCatalog.forLanguage(lang ?: "ko")
+        val currentTtsDownloaded = currentTtsEntry?.let { entry ->
+            ttsRows.firstOrNull { it.entry.id == entry.id }?.downloaded
+        } == true
+        val effectiveTtsEngineId = if (
+            normalizedTtsEngineId == MeloTtsEngine.ID &&
+            currentTtsDownloaded
+        ) {
+            MeloTtsEngine.ID
+        } else {
+            SystemTtsEngine.ID
+        }
         SettingsUiState(
             language = lang ?: "ko",
             systemPrompt = prompt.orEmpty(),
@@ -128,14 +153,25 @@ class SettingsViewModel(
             updateState = uState,
             autoUpdateCheck = autoUpdate,
             cameraInstantPreview = cameraInstant,
-            ttsEngineId = ttsEngineId ?: SystemTtsEngine.ID,
+            ttsEngineId = effectiveTtsEngineId,
+            activeTtsModelId = currentTtsEntry?.id,
             ttsModelRows = ttsRows,
             voiceLoopEnabled = voiceLoop
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
     fun setLanguage(code: String) {
-        viewModelScope.launch { prefs.setLanguage(code) }
+        viewModelScope.launch {
+            prefs.setLanguage(code)
+            val targetTts = TtsModelCatalog.forLanguage(code)
+            val engine = if (targetTts != null && tts.isModelDownloaded(targetTts)) {
+                MeloTtsEngine.ID
+            } else {
+                SystemTtsEngine.ID
+            }
+            if (targetTts != null) prefs.setActiveTtsModelId(targetTts.id)
+            prefs.setTtsEngine(engine)
+        }
     }
 
     fun setSystemPrompt(text: String) {
@@ -172,21 +208,38 @@ class SettingsViewModel(
     fun deleteModel(entry: ModelEntry) {
         gemma.delete(entry)
         refreshTick.value++
+        if (state.value.activeModelId == entry.id) {
+            viewModelScope.launch {
+                prefs.setActiveModelId(ModelCatalog.recommended.id)
+                gemma.reload()
+            }
+        }
     }
 
     fun startTtsDownload(entry: ModelEntry) {
         if (!tts.isModelDownloaded(entry)) downloader.start(entry, tts.fileFor(entry))
     }
 
+    fun isTtsModelUsable(entry: ModelEntry): Boolean = tts.isModelUsable(entry)
+
     fun cancelTtsDownload(entry: ModelEntry) = downloader.cancel(entry)
 
     fun deleteTtsModel(entry: ModelEntry) {
         tts.deleteModel(entry)
         refreshTick.value++
+        if (state.value.activeTtsModelId == entry.id) {
+            viewModelScope.launch { prefs.setTtsEngine(SystemTtsEngine.ID) }
+        }
     }
 
     fun setTtsEngine(id: String) {
-        viewModelScope.launch { prefs.setTtsEngine(id) }
+        viewModelScope.launch {
+            val normalized = if (id == MeloTtsEngine.LEGACY_KOKORO_ID) MeloTtsEngine.ID else id
+            val targetTts = TtsModelCatalog.forLanguage(state.value.language)
+            val allowed = normalized == SystemTtsEngine.ID ||
+                (normalized == MeloTtsEngine.ID && targetTts != null && tts.isModelDownloaded(targetTts))
+            prefs.setTtsEngine(if (allowed) normalized else SystemTtsEngine.ID)
+        }
     }
 
     fun setVoiceLoopEnabled(enabled: Boolean) {
@@ -199,6 +252,15 @@ class SettingsViewModel(
         viewModelScope.launch {
             prefs.setActiveModelId(entry.id)
             gemma.reload()
+        }
+    }
+
+    fun selectTtsModel(entry: ModelEntry) {
+        if (!tts.isModelDownloaded(entry)) return
+        viewModelScope.launch {
+            TtsModelCatalog.languageFor(entry)?.let { prefs.setLanguage(it) }
+            prefs.setActiveTtsModelId(entry.id)
+            prefs.setTtsEngine(MeloTtsEngine.ID)
         }
     }
 

@@ -52,6 +52,7 @@ data class ChatUiState(
     val isResponding: Boolean = false,
     val isListening: Boolean = false,
     val isMuted: Boolean = false,
+    val micLevel: Float = 0f,
     val pending: PendingAction? = null,
     val pendingImage: Uri? = null
 )
@@ -69,6 +70,7 @@ class ChatViewModel(
     private val responding = MutableStateFlow(false)
     private val listening = MutableStateFlow(false)
     private val muted = MutableStateFlow(false)
+    private val micLevel = MutableStateFlow(0f)
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
     private val pending = MutableStateFlow<PendingAction?>(null)
@@ -82,22 +84,24 @@ class ChatViewModel(
         if (id == null) flowOf(emptyList()) else repo.observeMessages(id)
     }
 
-    val state: StateFlow<ChatUiState> = combine(
-        combine(
-            repo.observeSessions(),
-            currentSessionId,
-            persistedMessages,
-            responding,
-            overlay
-        ) { sessions, id, msgs, busy, live ->
-            val combined = if (live != null) msgs + live else msgs
-            ChatUiState(
-                sessions = sessions,
-                currentSessionId = id,
-                messages = combined,
-                isResponding = busy
-            )
-        },
+    private val baseState = combine(
+        repo.observeSessions(),
+        currentSessionId,
+        persistedMessages,
+        responding,
+        overlay
+    ) { sessions, id, msgs, busy, live ->
+        val combined = if (live != null) msgs + live else msgs
+        ChatUiState(
+            sessions = sessions,
+            currentSessionId = id,
+            messages = combined,
+            isResponding = busy
+        )
+    }
+
+    private val interactiveState = combine(
+        baseState,
         pending,
         listening,
         pendingImage,
@@ -108,6 +112,15 @@ class ChatViewModel(
             isListening = listen,
             pendingImage = img,
             isMuted = mute
+        )
+    }
+
+    val state: StateFlow<ChatUiState> = combine(
+        interactiveState,
+        micLevel
+    ) { base, level ->
+        base.copy(
+            micLevel = level
         )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
@@ -430,11 +443,17 @@ class ChatViewModel(
             override fun onBeginningOfSpeech() {
                 onSttSpeechStart?.invoke()
             }
-            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onRmsChanged(rmsdB: Float) {
+                micLevel.value = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
+            }
             override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() { listening.value = false }
+            override fun onEndOfSpeech() {
+                listening.value = false
+                micLevel.value = 0f
+            }
             override fun onError(error: Int) {
                 listening.value = false
+                micLevel.value = 0f
                 if (continuousMode && !muted.value) scheduleRestart()
             }
             override fun onResults(results: Bundle?) {
@@ -444,6 +463,7 @@ class ChatViewModel(
                     onSttResult?.invoke(text)
                     onSttFinalResult?.invoke(text)
                 }
+                micLevel.value = 0f
                 if (continuousMode && !muted.value) scheduleRestart()
             }
             override fun onPartialResults(partial: Bundle?) {

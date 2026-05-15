@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nomad.travel.R
+import com.nomad.travel.llm.DownloadPhase
 import com.nomad.travel.llm.DownloadStatus
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.ui.theme.NomadAssistantBubble
@@ -261,6 +262,14 @@ private fun StatusRow(
         row.status is DownloadStatus.Progress && !row.downloaded -> {
             val target = row.status.fraction.coerceIn(0f, 1f)
             val animated by animateFloatAsState(target, label = "p")
+            val installing = row.status.phase == DownloadPhase.INSTALLING
+            val archiveBacked = row.entry.archiveUrl != null
+            val phaseFraction = when {
+                installing && archiveBacked -> ((target - 0.5f) / 0.5f).coerceIn(0f, 1f)
+                !installing && archiveBacked -> (target / 0.5f).coerceIn(0f, 1f)
+                else -> target
+            }
+            val phasePercent = (phaseFraction * 100).toInt().coerceIn(0, 100)
             Column {
                 LinearProgressIndicator(
                     progress = { animated },
@@ -275,7 +284,11 @@ private fun StatusRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatMB(row.status.downloaded, row.status.total),
+                        text = if (installing) {
+                            stringResource(R.string.model_installing)
+                        } else {
+                            stringResource(R.string.model_downloading)
+                        },
                         style = MaterialTheme.typography.labelSmall.copy(color = NomadSilver)
                     )
                     Text(
@@ -284,6 +297,20 @@ private fun StatusRow(
                     )
                     TextPill(stringResource(R.string.common_cancel), NomadMist, onCancel)
                 }
+                Spacer(Modifier.size(4.dp))
+                Text(
+                    text = if (installing) {
+                        stringResource(R.string.model_installing_detail, phasePercent)
+                    } else {
+                        stringResource(R.string.model_downloading_detail, phasePercent)
+                    },
+                    style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                )
+                Spacer(Modifier.size(2.dp))
+                Text(
+                    text = formatMB(row.status.downloaded, row.status.total),
+                    style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                )
             }
         }
         row.downloaded -> {

@@ -223,6 +223,10 @@ fun ChatScreen(
     val isRespondingState = rememberUpdatedState(state.isResponding)
     val isMutedState = rememberUpdatedState(state.isMuted)
     val spokenMessageIds = remember { mutableSetOf<String>() }
+    var streamingSpeechMessageId by remember { mutableStateOf<String?>(null) }
+    var streamingSpeechOffset by remember { mutableStateOf(0) }
+    var streamingSpeechText by remember { mutableStateOf("") }
+    var streamedSpeechActive by remember { mutableStateOf(false) }
 
     // STT: wire mic results.
     //  - In voice mode, suppress partial-text typing into the input box so the
@@ -239,6 +243,10 @@ fun ChatScreen(
                 // Barge-in: cancel any in-flight response (also stops streaming
                 // tokens) and stop TTS before starting a new turn.
                 tts.stop()
+                streamingSpeechMessageId = null
+                streamingSpeechOffset = 0
+                streamingSpeechText = ""
+                streamedSpeechActive = false
                 if (isRespondingState.value) vm.cancelAndAwait()
                 vm.send(context, text, null)
             }
@@ -254,7 +262,34 @@ fun ChatScreen(
         }
     }
 
-    // Speak each new assistant reply while voice mode is open.
+    // Speak streaming assistant text as soon as stable sentence/chunk boundaries appear.
+    LaunchedEffect(voiceModeOpen, streamingMessageId, streamingTextLength) {
+        if (!voiceModeOpen) {
+            streamingSpeechMessageId = null
+            streamingSpeechOffset = 0
+            streamingSpeechText = ""
+            streamedSpeechActive = false
+            return@LaunchedEffect
+        }
+        val streaming = streamingAssistant ?: return@LaunchedEffect
+        if (streamingSpeechMessageId != streaming.id) {
+            streamingSpeechMessageId = streaming.id
+            streamingSpeechOffset = 0
+            streamingSpeechText = ""
+            streamedSpeechActive = false
+        }
+        streamingSpeechText = streaming.text
+        var next = nextSpeakableTtsChunk(streaming.text, streamingSpeechOffset, final = false)
+        while (next != null) {
+            tts.speakQueued(next.text, Locale.getDefault().language)
+            streamingSpeechOffset = next.endIndex
+            streamedSpeechActive = true
+            next = nextSpeakableTtsChunk(streaming.text, streamingSpeechOffset, final = false)
+        }
+    }
+
+    // Speak each new assistant reply while voice mode is open. If it already
+    // streamed, only speak the residual tail that had no boundary yet.
     LaunchedEffect(voiceModeOpen, state.isResponding, state.messages.size) {
         if (!voiceModeOpen) return@LaunchedEffect
         if (state.isResponding) return@LaunchedEffect
@@ -264,7 +299,26 @@ fun ChatScreen(
         if (last.text.isBlank()) return@LaunchedEffect
         if (last.id in spokenMessageIds) return@LaunchedEffect
         spokenMessageIds.add(last.id)
-        tts.speak(last.text, Locale.getDefault().language)
+        if (streamedSpeechActive) {
+            var next = nextSpeakableTtsChunk(last.text, streamingSpeechOffset, final = true)
+            while (next != null) {
+                tts.speakQueued(next.text, Locale.getDefault().language)
+                streamingSpeechOffset = next.endIndex
+                next = nextSpeakableTtsChunk(last.text, streamingSpeechOffset, final = true)
+            }
+            streamingSpeechMessageId = null
+            streamingSpeechOffset = 0
+            streamingSpeechText = ""
+            streamedSpeechActive = false
+        } else {
+            var offset = 0
+            var next = nextSpeakableTtsChunk(last.text, offset, final = true)
+            while (next != null) {
+                tts.speakQueued(next.text, Locale.getDefault().language)
+                offset = next.endIndex
+                next = nextSpeakableTtsChunk(last.text, offset, final = true)
+            }
+        }
     }
 
     // The continuous recognizer (started by VoiceConversationDialog) already
@@ -426,6 +480,7 @@ fun ChatScreen(
             isListening = state.isListening,
             isResponding = state.isResponding,
             isMuted = state.isMuted,
+            micLevel = state.micLevel,
             onToggleMute = { vm.setMuted(!state.isMuted) },
             onDismiss = {
                 vm.stopContinuousListening()
@@ -1813,4 +1868,39 @@ private fun TranslateModeCard(
             )
         }
     }
+}
+
+private data class TtsChunk(val text: String, val endIndex: Int)
+
+private fun nextSpeakableTtsChunk(text: String, startIndex: Int, final: Boolean): TtsChunk? {
+    if (startIndex >= text.length) return null
+    val raw = text.substring(startIndex)
+    val leading = raw.indexOfFirst { !it.isWhitespace() }
+    if (leading < 0) return null
+    val start = startIndex + leading
+    val segment = text.substring(start)
+
+    val sentenceEnd = segment.indexOfFirst { it in ".!?。！？\n" }
+    if (sentenceEnd >= 0) {
+        val end = (start + sentenceEnd + 1).coerceAtMost(text.length)
+        val chunk = text.substring(start, end).trim()
+        if (chunk.isNotBlank()) return TtsChunk(chunk, end)
+    }
+
+    val minChunk = 36
+    if (!final && text.length - start >= minChunk) {
+        val searchEnd = (start + 90).coerceAtMost(text.length)
+        val space = text.substring(start, searchEnd).indexOfLast { it.isWhitespace() }
+        if (space >= minChunk) {
+            val end = start + space + 1
+            val chunk = text.substring(start, end).trim()
+            if (chunk.isNotBlank()) return TtsChunk(chunk, end)
+        }
+    }
+
+    if (final) {
+        val chunk = text.substring(start).trim()
+        if (chunk.isNotBlank()) return TtsChunk(chunk, text.length)
+    }
+    return null
 }

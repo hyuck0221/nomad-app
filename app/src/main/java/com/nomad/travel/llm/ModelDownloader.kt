@@ -12,9 +12,18 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.io.File
 
+enum class DownloadPhase {
+    DOWNLOADING,
+    INSTALLING
+}
+
 sealed interface DownloadStatus {
     data object Idle : DownloadStatus
-    data class Progress(val downloaded: Long, val total: Long) : DownloadStatus {
+    data class Progress(
+        val downloaded: Long,
+        val total: Long,
+        val phase: DownloadPhase = DownloadPhase.DOWNLOADING
+    ) : DownloadStatus {
         val fraction: Float get() = if (total > 0) downloaded.toFloat() / total else 0f
     }
     data object Done : DownloadStatus
@@ -33,7 +42,7 @@ class ModelDownloader(context: Context) {
 
     fun start(entry: ModelEntry, dest: File) {
         val request = OneTimeWorkRequestBuilder<DownloadWorker>()
-            .setInputData(DownloadWorker.inputData(entry.url, dest))
+            .setInputData(DownloadWorker.inputData(entry, dest))
             .setConstraints(
                 Constraints.Builder()
                     .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -44,7 +53,7 @@ class ModelDownloader(context: Context) {
 
         workManager.enqueueUniqueWork(
             workName(entry),
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }
@@ -62,7 +71,11 @@ class ModelDownloader(context: Context) {
                 WorkInfo.State.RUNNING -> {
                     val downloaded = info.progress.getLong(DownloadWorker.PROGRESS_DOWNLOADED, 0)
                     val total = info.progress.getLong(DownloadWorker.PROGRESS_TOTAL, 0)
-                    DownloadStatus.Progress(downloaded, total)
+                    val phase = when (info.progress.getString(DownloadWorker.PROGRESS_PHASE)) {
+                        DownloadWorker.PHASE_INSTALLING -> DownloadPhase.INSTALLING
+                        else -> DownloadPhase.DOWNLOADING
+                    }
+                    DownloadStatus.Progress(downloaded, total, phase)
                 }
                 WorkInfo.State.SUCCEEDED -> DownloadStatus.Done
                 WorkInfo.State.FAILED -> {

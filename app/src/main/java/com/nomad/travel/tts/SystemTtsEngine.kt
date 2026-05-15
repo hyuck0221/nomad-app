@@ -35,7 +35,7 @@ class SystemTtsEngine(context: Context) : TtsEngine {
                 })
                 pending?.let { (text, lang) ->
                     pending = null
-                    speakInternal(text, lang)
+                    speakInternal(text, lang, TextToSpeech.QUEUE_FLUSH)
                 }
             }
         }
@@ -57,7 +57,16 @@ class SystemTtsEngine(context: Context) : TtsEngine {
             pending = text to languageCode
             return
         }
-        speakInternal(text, languageCode)
+        speakInternal(text, languageCode, TextToSpeech.QUEUE_FLUSH)
+    }
+
+    fun speakQueued(text: String, languageCode: String) {
+        if (text.isBlank()) return
+        if (!ready) {
+            pending = text to languageCode
+            return
+        }
+        speakInternal(text, languageCode, TextToSpeech.QUEUE_ADD)
     }
 
     override fun stop() {
@@ -73,7 +82,7 @@ class SystemTtsEngine(context: Context) : TtsEngine {
         ready = false
     }
 
-    private fun speakInternal(text: String, languageCode: String) {
+    private fun speakInternal(text: String, languageCode: String, queueMode: Int) {
         val engine = tts ?: return
         val locale = resolveLocale(languageCode)
         val available = runCatching { engine.isLanguageAvailable(locale) }
@@ -84,7 +93,7 @@ class SystemTtsEngine(context: Context) : TtsEngine {
         val params = Bundle()
         engine.speak(
             text,
-            TextToSpeech.QUEUE_FLUSH,
+            queueMode,
             params,
             "nomad-system-tts-${System.currentTimeMillis()}"
         )

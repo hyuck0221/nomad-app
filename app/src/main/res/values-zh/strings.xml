@@ -78,6 +78,7 @@
 
     <string name="common_cancel">取消</string>
     <string name="common_delete">删除</string>
+    <string name="common_ok">确定</string>
     <string name="common_yes">是</string>
     <string name="common_no">否</string>
 
@@ -132,6 +133,11 @@
     <string name="model_blocked_banner">此设备无法使用（需要内存 %1$.0f GB 以上）</string>
     <string name="model_warn_banner">内存不足 %1$.0f GB 时可能会稍慢</string>
     <string name="model_downloaded">下载完成</string>
+    <string name="model_downloading">正在下载…</string>
+    <string name="model_downloading_detail">正在接收模型文件 · 下载 %1$d%%</string>
+    <string name="model_installing">正在安装…</string>
+    <string name="model_installing_detail">正在解压并安装文件 · 安装 %1$d%%</string>
+    <string name="model_installing_percent">即将完成</string>
     <string name="model_download">下载</string>
     <string name="model_retry">重试</string>
     <string name="model_failed_prefix">失败：%1$s</string>
@@ -178,18 +184,26 @@
     <string name="settings_tts_engine">语音引擎</string>
     <string name="settings_tts_engine_system">系统（内置）</string>
     <string name="settings_tts_engine_system_body">使用 Android 系统自带的文本转语音。</string>
-    <string name="settings_tts_engine_kokoro">自然语音（神经网络）</string>
-    <string name="settings_tts_engine_kokoro_body">使用神经网络模型合成更自然的语音。请在下方下载模型。</string>
-    <string name="settings_tts_kokoro_preview">⚠️ 推理引擎集成中 — 目前仅支持下载。</string>
+    <string name="settings_tts_engine_melo">移动 AI TTS（本地）</string>
+    <string name="settings_tts_engine_melo_body">使用 Supertonic 3 本地 AI 语音模型。</string>
+    <string name="settings_tts_melo_ready">当前语言的移动 AI TTS 模型已安装。</string>
+    <string name="settings_tts_melo_missing">当前语言的移动 AI TTS 模型尚未安装，因此使用系统 TTS。</string>
+    <string name="settings_tts_melo_missing_hint">在下方模型管理中安装 TTS 升级模型后会自动切换。</string>
+    <string name="settings_model_llm_group">文本模型</string>
+    <string name="settings_model_tts_group">语音模型</string>
+    <string name="settings_model_internal_tts_name">内置 TTS（默认）</string>
+    <string name="settings_model_internal_tts_body">无需额外下载，使用设备内置语音合成。</string>
+    <string name="settings_voice_model_upgrade_desc">可升级到基于 Supertonic 3 的多语言本地 AI 语音模型。</string>
     <string name="settings_tts_delete_title">删除语音模型</string>
     <string name="settings_tts_delete_body">要从设备删除此语音模型文件吗？再次使用时需要重新下载。</string>
+    <string name="settings_tts_language_change_title">语言也会更改</string>
+    <string name="settings_tts_language_change_body">选择此语音模型会将应用语言更改为 %1$s。是否继续？</string>
     <string name="model_gemma_e2b_name">标准 · Gemma4 2B</string>
     <string name="model_gemma_e2b_tagline">在大多数设备上运行快速稳定</string>
     <string name="model_gemma_e4b_name">高级 · Gemma4 4B</string>
     <string name="model_gemma_e4b_tagline">追求更细腻、更准确的回答时推荐</string>
-    <string name="model_tts_kokoro_tagline">英语 · 日语 · 中文等语言的拟人化自然语音</string>
-    <string name="model_tts_korean_name">韩语自然语音（ONNX）</string>
-    <string name="model_tts_korean_tagline">韩语专用神经 TTS — 比系统语音更自然</string>
+    <string name="model_tts_supertonic3_name">Supertonic 3 多语言语音</string>
+    <string name="model_tts_supertonic3_tagline">支持韩语、英语、日语和中文 fallback 的轻量本地 TTS</string>
     <string name="settings_voice_loop">语音模式自动续听</string>
     <string name="settings_voice_loop_body">每次播放回复后自动重新开始聆听。</string>
     <string name="translate_clear">清除</string>

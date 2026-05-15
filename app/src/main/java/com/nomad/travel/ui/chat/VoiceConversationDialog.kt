@@ -2,6 +2,7 @@ package com.nomad.travel.ui.chat
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
@@ -59,9 +60,15 @@ fun VoiceConversationDialog(
     isListening: Boolean,
     isResponding: Boolean,
     isMuted: Boolean,
+    micLevel: Float,
     onToggleMute: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val inputLevel by animateFloatAsState(
+        targetValue = if (!isMuted && isListening) micLevel.coerceIn(0f, 1f) else 0f,
+        animationSpec = tween(durationMillis = 90),
+        label = "voiceInputLevel"
+    )
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -131,7 +138,10 @@ fun VoiceConversationDialog(
                     modifier = Modifier.size(220.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    PulsingHalo(active = !isMuted && (isListening || isResponding))
+                    PulsingHalo(
+                        active = !isMuted && (isListening || isResponding),
+                        level = inputLevel
+                    )
                     Box(
                         modifier = Modifier
                             .size(150.dp)
@@ -151,6 +161,7 @@ fun VoiceConversationDialog(
                     ) {
                         Waveform(
                             active = !isMuted && isListening,
+                            level = inputLevel,
                             modifier = Modifier
                                 .size(width = 110.dp, height = 60.dp)
                         )
@@ -210,7 +221,7 @@ private fun MuteButton(isMuted: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PulsingHalo(active: Boolean) {
+private fun PulsingHalo(active: Boolean, level: Float) {
     val transition = rememberInfiniteTransition(label = "halo")
     val alpha by transition.animateFloat(
         initialValue = if (active) 0.35f else 0.18f,
@@ -223,14 +234,14 @@ private fun PulsingHalo(active: Boolean) {
     )
     Box(
         modifier = Modifier
-            .size(220.dp)
+            .size((220 + level * 34).dp)
             .clip(CircleShape)
-            .background(NomadGlow.copy(alpha = alpha))
+            .background(NomadGlow.copy(alpha = (alpha + level * 0.16f).coerceAtMost(0.5f)))
     )
 }
 
 @Composable
-private fun Waveform(active: Boolean, modifier: Modifier = Modifier) {
+private fun Waveform(active: Boolean, level: Float, modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "wave")
     val phase by transition.animateFloat(
         initialValue = 0f,
@@ -262,7 +273,9 @@ private fun Waveform(active: Boolean, modifier: Modifier = Modifier) {
             val freq = 2.4f
             val envelope = sin((t * PI).toFloat())
             val raw = sin((t * freq * 2f * PI).toFloat() + phase)
-            val barH = (envelope * raw * amp * (h / 2f - 4f)).coerceAtLeast(2f)
+            val inputBoost = if (active) 0.45f + level * 1.35f else 1f
+            val barH = (envelope * raw * amp * inputBoost * (h / 2f - 4f))
+                .coerceAtLeast(2f)
             drawLine(
                 color = color,
                 start = Offset(x, midY - barH),

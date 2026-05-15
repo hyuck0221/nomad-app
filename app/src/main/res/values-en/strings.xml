@@ -78,6 +78,7 @@
 
     <string name="common_cancel">Cancel</string>
     <string name="common_delete">Delete</string>
+    <string name="common_ok">OK</string>
     <string name="common_yes">Yes</string>
     <string name="common_no">No</string>
 
@@ -132,6 +133,11 @@
     <string name="model_blocked_banner">Not available on this device (%1$.0f GB memory required)</string>
     <string name="model_warn_banner">May run slowly on devices with less than %1$.0f GB memory</string>
     <string name="model_downloaded">Download complete</string>
+    <string name="model_downloading">Downloading…</string>
+    <string name="model_downloading_detail">Receiving model file · download %1$d%%</string>
+    <string name="model_installing">Installing…</string>
+    <string name="model_installing_detail">Extracting and installing files · install %1$d%%</string>
+    <string name="model_installing_percent">Finishing</string>
     <string name="model_download">Download</string>
     <string name="model_retry">Retry</string>
     <string name="model_failed_prefix">Failed: %1$s</string>
@@ -178,18 +184,26 @@
     <string name="settings_tts_engine">Voice engine</string>
     <string name="settings_tts_engine_system">System (built-in)</string>
     <string name="settings_tts_engine_system_body">Uses Android\'s built-in text-to-speech.</string>
-    <string name="settings_tts_engine_kokoro">Natural voice (neural)</string>
-    <string name="settings_tts_engine_kokoro_body">Synthesizes more natural speech with a neural model. Download a model below.</string>
-    <string name="settings_tts_kokoro_preview">⚠️ Inference engine integration pending — only download is available right now.</string>
+    <string name="settings_tts_engine_melo">Mobile AI TTS (local)</string>
+    <string name="settings_tts_engine_melo_body">Uses the Supertonic 3 local AI voice model.</string>
+    <string name="settings_tts_melo_ready">A mobile AI TTS model for the current language is installed.</string>
+    <string name="settings_tts_melo_missing">No mobile AI TTS model is installed for the current language, so system TTS is active.</string>
+    <string name="settings_tts_melo_missing_hint">Install a TTS upgrade model in Model Management below to switch automatically.</string>
+    <string name="settings_model_llm_group">Text models</string>
+    <string name="settings_model_tts_group">Voice models</string>
+    <string name="settings_model_internal_tts_name">Internal TTS (default)</string>
+    <string name="settings_model_internal_tts_body">Uses the built-in voice synthesis on this device with no extra download.</string>
+    <string name="settings_voice_model_upgrade_desc">Upgrade to a multilingual local AI voice model powered by Supertonic 3.</string>
     <string name="settings_tts_delete_title">Delete voice model</string>
     <string name="settings_tts_delete_body">Delete this voice model file from the device? You\'ll need to download it again to use it.</string>
+    <string name="settings_tts_language_change_title">Language will change</string>
+    <string name="settings_tts_language_change_body">Selecting this voice model will change the app language to %1$s. Continue?</string>
     <string name="model_gemma_e2b_name">Standard · Gemma4 2B</string>
     <string name="model_gemma_e2b_tagline">Fast and stable on most devices</string>
     <string name="model_gemma_e4b_name">Advanced · Gemma4 4B</string>
     <string name="model_gemma_e4b_tagline">Better when you want more nuanced and accurate answers</string>
-    <string name="model_tts_kokoro_tagline">Human-like voice for English, Japanese, Chinese, and more</string>
-    <string name="model_tts_korean_name">Korean Natural Voice (ONNX)</string>
-    <string name="model_tts_korean_tagline">Korean-only neural TTS — more natural than the system voice</string>
+    <string name="model_tts_supertonic3_name">Supertonic 3 Multilingual Voice</string>
+    <string name="model_tts_supertonic3_tagline">Lightweight local TTS for Korean, English, Japanese, and Chinese fallback</string>
     <string name="settings_voice_loop">Auto-listen in voice mode</string>
     <string name="settings_voice_loop_body">Restart listening automatically after each spoken response.</string>
     <string name="translate_clear">Clear</string>

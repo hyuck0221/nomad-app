@@ -2,56 +2,52 @@ package com.nomad.travel.tts
 
 import com.nomad.travel.R
 import com.nomad.travel.llm.ModelEntry
+import com.nomad.travel.llm.ModelFile
 
 /** Downloadable TTS voice models. Separate from the LLM [com.nomad.travel.llm.ModelCatalog]. */
 object TtsModelCatalog {
 
-    val kokoroV1: ModelEntry = ModelEntry(
-        id = "kokoro-82m-onnx-v1",
-        displayName = "Kokoro 82M (ONNX)",
-        shortName = "Kokoro",
-        // ~330 MB FP16 ONNX. Real number depends on the chosen quantization.
-        sizeBytes = 330_000_000L,
-        url = "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX/resolve/main/onnx/model.onnx",
-        fileName = "kokoro-v1.0.onnx",
+    private const val SUPERTONIC_BASE = "https://huggingface.co/Supertone/supertonic-3/resolve/main"
+    private val SUPERTONIC_LANGUAGE_CODES = setOf("ko", "en", "ja", "zh")
+
+    val supertonic3: ModelEntry = ModelEntry(
+        id = "tts-supertonic-3",
+        displayName = "Supertonic 3 Multilingual Voice",
+        displayNameResId = R.string.model_tts_supertonic3_name,
+        shortName = "Supertonic 3",
+        sizeBytes = 3_700_147L,
+        url = "$SUPERTONIC_BASE/onnx/duration_predictor.onnx",
+        fileName = "tts-supertonic-3/onnx/duration_predictor.onnx",
+        companionFiles = listOf(
+            ModelFile("$SUPERTONIC_BASE/onnx/text_encoder.onnx", "text_encoder.onnx", 36_416_150L),
+            ModelFile("$SUPERTONIC_BASE/onnx/vector_estimator.onnx", "vector_estimator.onnx", 256_534_781L),
+            ModelFile("$SUPERTONIC_BASE/onnx/vocoder.onnx", "vocoder.onnx", 101_424_195L),
+            ModelFile("$SUPERTONIC_BASE/onnx/tts.json", "tts.json", 8_253L),
+            ModelFile("$SUPERTONIC_BASE/onnx/unicode_indexer.json", "unicode_indexer.json", 277_676L),
+            ModelFile("$SUPERTONIC_BASE/voice_styles/M1.json", "../voice_styles/M1.json", 291_748L)
+        ),
         recommended = false,
-        tagline = "사람 같은 자연스러운 목소리 (영어/일본어/중국어 등)",
-        taglineResId = R.string.model_tts_kokoro_tagline,
-        badges = listOf("뉴럴", "330 MB", "프리뷰"),
+        tagline = "Lightweight local multilingual TTS for Korean, English, Japanese, and Chinese fallback",
+        taglineResId = R.string.model_tts_supertonic3_tagline,
+        badges = listOf("TTS", "Supertonic 3", "KO", "EN", "JA", "ZH"),
         minRamBytes = 0L,
         warnRamBytes = 0L
     )
 
-    /**
-     * Korean neural TTS. Points at MyShell's MeloTTS-Korean checkpoint, which
-     * is publicly hosted on Hugging Face (no auth, ~198 MB). Verified 200 OK
-     * with bare HTTP clients (no User-Agent gating).
-     * Used when the user's UI language is Korean (Kokoro v1 has no Korean voice).
-     */
-    val koreanNeural: ModelEntry = ModelEntry(
-        id = "ko-neural-melo-v1",
-        displayName = "한국어 자연 음성 (MeloTTS)",
-        displayNameResId = R.string.model_tts_korean_name,
-        shortName = "Korean TTS",
-        // MeloTTS-Korean checkpoint.pth measured at 207,860,748 bytes.
-        sizeBytes = 207_860_748L,
-        url = "https://huggingface.co/myshell-ai/MeloTTS-Korean/resolve/main/checkpoint.pth",
-        fileName = "melotts-ko-v1.pth",
-        recommended = false,
-        tagline = "한국어 전용 뉴럴 TTS — 시스템 음성보다 자연스러워요",
-        taglineResId = R.string.model_tts_korean_tagline,
-        badges = listOf("뉴럴", "한국어", "200 MB", "프리뷰"),
-        minRamBytes = 0L,
-        warnRamBytes = 0L
-    )
+    val all: List<ModelEntry> = listOf(supertonic3)
 
-    val all: List<ModelEntry> = listOf(kokoroV1, koreanNeural)
+    fun forLanguage(languageCode: String?): ModelEntry? =
+        languageCode
+            ?.lowercase()
+            ?.takeIf { it in SUPERTONIC_LANGUAGE_CODES }
+            ?.let { supertonic3 }
 
-    /**
-     * Pick the neural TTS model that fits the current UI language.
-     * - Korean (`ko`) → Korean-specific model (Kokoro has no Korean voice)
-     * - Anything else → Kokoro
-     */
-    fun forLanguage(languageCode: String?): ModelEntry =
-        if (languageCode.equals("ko", ignoreCase = true)) koreanNeural else kokoroV1
+    fun byId(id: String?): ModelEntry? = all.firstOrNull { it.id == id }
+
+    fun languageFor(entry: ModelEntry): String? = null
+
+    fun supportsLanguage(entry: ModelEntry, languageCode: String): Boolean =
+        isSupertonic(entry) && languageCode.lowercase() in SUPERTONIC_LANGUAGE_CODES
+
+    fun isSupertonic(entry: ModelEntry): Boolean = entry.id == supertonic3.id
 }
