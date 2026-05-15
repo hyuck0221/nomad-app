@@ -189,6 +189,9 @@
     <string name="settings_tts_melo_ready">A mobile AI TTS model for the current language is installed.</string>
     <string name="settings_tts_melo_missing">No mobile AI TTS model is installed for the current language, so system TTS is active.</string>
     <string name="settings_tts_melo_missing_hint">Install a TTS upgrade model in Model Management below to switch automatically.</string>
+    <string name="settings_tts_voice_preset">Supertonic voice preset</string>
+    <string name="settings_tts_voice_preset_body">Choose the default voice for spoken conversations.</string>
+    <string name="settings_tts_voice_preview">Preview selected preset</string>
     <string name="settings_model_llm_group">Text models</string>
     <string name="settings_model_tts_group">Voice models</string>
     <string name="settings_model_internal_tts_name">Internal TTS (default)</string>

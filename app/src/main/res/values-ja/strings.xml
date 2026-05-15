@@ -189,6 +189,9 @@
     <string name="settings_tts_melo_ready">現在の言語のモバイル AI TTS モデルがインストールされています。</string>
     <string name="settings_tts_melo_missing">現在の言語のモバイル AI TTS モデルが未インストールのため、システム TTS を使用します。</string>
     <string name="settings_tts_melo_missing_hint">下のモデル管理で TTS アップグレードモデルをインストールすると自動で切り替わります。</string>
+    <string name="settings_tts_voice_preset">Supertonic 音声プリセット</string>
+    <string name="settings_tts_voice_preset_body">音声会話で使う標準の声を選びます。</string>
+    <string name="settings_tts_voice_preview">選択したプリセットを試聴</string>
     <string name="settings_model_llm_group">テキストモデル</string>
     <string name="settings_model_tts_group">音声モデル</string>
     <string name="settings_model_internal_tts_name">内蔵TTS（標準）</string>

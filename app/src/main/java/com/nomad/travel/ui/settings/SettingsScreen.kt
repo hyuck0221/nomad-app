@@ -399,6 +399,52 @@ fun SettingsScreen(
                 icon = Icons.Default.GraphicEq
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val supertonicSelected = state.ttsEngineId != SystemTtsEngine.ID &&
+                        state.activeTtsModelId == TtsModelCatalog.supertonic3.id
+                    AnimatedVisibility(visible = supertonicSelected) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color.White.copy(alpha = 0.04f))
+                                .border(
+                                    1.dp,
+                                    Color.White.copy(alpha = 0.08f),
+                                    RoundedCornerShape(14.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_tts_voice_preset),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = NomadSilver
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_tts_voice_preset_body),
+                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                            )
+                            TtsModelCatalog.voicePresets.chunked(5).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    row.forEach { preset ->
+                                        VoicePresetButton(
+                                            label = preset,
+                                            selected = state.ttsVoicePreset == preset,
+                                            onClick = { vm.setTtsVoicePreset(preset) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                            SecondaryButton(
+                                label = stringResource(R.string.settings_tts_voice_preview),
+                                onClick = { vm.previewTtsVoice() }
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -989,6 +1035,33 @@ private fun TtsEngineRow(
             }
         }
     }
+}
+
+@Composable
+private fun VoicePresetButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = label,
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) NomadRoyal.copy(alpha = 0.72f) else Color.White.copy(alpha = 0.04f))
+            .border(
+                1.dp,
+                if (selected) NomadGlow.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.08f),
+                RoundedCornerShape(10.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        style = MaterialTheme.typography.labelMedium.copy(
+            color = if (selected) NomadSilver else NomadMist,
+            fontWeight = FontWeight.SemiBold
+        ),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+    )
 }
 
 @Composable

@@ -31,12 +31,16 @@ class MeloTtsEngine(context: Context) : TtsEngine {
     private val playbackExecutor = Executors.newSingleThreadExecutor()
     private val stopped = AtomicBoolean(false)
     private val generation = AtomicLong(0L)
+    private val engineVersion = AtomicLong(0L)
 
     @Volatile
     private var activeModelId: String? = null
 
     @Volatile
     private var preferredModelId: String? = null
+
+    @Volatile
+    private var voicePreset: String = TtsModelCatalog.DEFAULT_VOICE_PRESET
 
     @Volatile
     private var track: AudioTrack? = null
@@ -59,6 +63,14 @@ class MeloTtsEngine(context: Context) : TtsEngine {
 
     fun setPreferredModel(id: String?) {
         preferredModelId = id
+    }
+
+    fun setVoicePreset(preset: String?) {
+        val normalized = TtsModelCatalog.normalizeVoicePreset(preset)
+        if (voicePreset == normalized) return
+        voicePreset = normalized
+        stop()
+        releaseSynthEngines()
     }
 
     fun fileFor(entry: ModelEntry): File =
@@ -153,7 +165,7 @@ class MeloTtsEngine(context: Context) : TtsEngine {
         val audio = engine.generateWithConfig(
             text = segment.text,
             config = GenerationConfig(
-                sid = 0,
+                sid = speakerIdForPreset(voicePreset),
                 speed = 1.05f,
                 numSteps = 5,
                 extra = mapOf("lang" to supertonicLanguage(segment.languageCode))
@@ -173,7 +185,8 @@ class MeloTtsEngine(context: Context) : TtsEngine {
     }
 
     private fun ensureThreadTts(entry: ModelEntry): OfflineTts {
-        threadTts.get()?.takeIf { it.modelId == entry.id }?.let { return it.tts }
+        val key = "${entry.id}:$voicePreset:${engineVersion.get()}"
+        threadTts.get()?.takeIf { it.modelId == key }?.let { return it.tts }
         threadTts.get()?.tts?.let {
             synthEngines.remove(it)
             it.release()
@@ -186,7 +199,7 @@ class MeloTtsEngine(context: Context) : TtsEngine {
             silenceScale = 0.2f
         )
         return OfflineTts(config = config).also {
-            threadTts.set(TtsHolder(entry.id, it))
+            threadTts.set(TtsHolder(key, it))
             synthEngines.add(it)
             activeModelId = entry.id
         }
@@ -302,22 +315,29 @@ class MeloTtsEngine(context: Context) : TtsEngine {
         OfflineTtsModelConfig(
             supertonic = OfflineTtsSupertonicModelConfig(
                 durationPredictor = modelFile.absolutePath,
-                textEncoder = File(modelDir, "text_encoder.onnx").absolutePath,
-                vectorEstimator = File(modelDir, "vector_estimator.onnx").absolutePath,
-                vocoder = File(modelDir, "vocoder.onnx").absolutePath,
+                textEncoder = File(modelDir, "text_encoder.int8.onnx").absolutePath,
+                vectorEstimator = File(modelDir, "vector_estimator.int8.onnx").absolutePath,
+                vocoder = File(modelDir, "vocoder.int8.onnx").absolutePath,
                 ttsJson = File(modelDir, "tts.json").absolutePath,
-                unicodeIndexer = File(modelDir, "unicode_indexer.json").absolutePath,
-                voiceStyle = File(modelDir.parentFile, "voice_styles/M1.json").absolutePath
+                unicodeIndexer = File(modelDir, "unicode_indexer.bin").absolutePath,
+                voiceStyle = File(modelDir, "voice.bin").absolutePath
             ),
             numThreads = 2,
             debug = false,
             provider = "cpu"
         )
 
+    private fun speakerIdForPreset(preset: String): Int =
+        TtsModelCatalog.voicePresets.indexOf(TtsModelCatalog.normalizeVoicePreset(preset))
+            .takeIf { it >= 0 }
+            ?: TtsModelCatalog.voicePresets.indexOf(TtsModelCatalog.DEFAULT_VOICE_PRESET)
+                .takeIf { it >= 0 }
+            ?: 0
+
     private fun supertonicLanguage(languageCode: String): String =
         when (languageCode.lowercase()) {
             "en", "ko", "ja" -> languageCode.lowercase()
-            else -> "na"
+            else -> "en"
         }
 
     private fun isCurrentGeneration(generationId: Long): Boolean =
@@ -327,6 +347,7 @@ class MeloTtsEngine(context: Context) : TtsEngine {
         !stopped.get() && generation.get() == generationId
 
     private fun releaseSynthEngines() {
+        engineVersion.incrementAndGet()
         synthEngines.toList().forEach { it.release() }
         synthEngines.clear()
         activeModelId = null

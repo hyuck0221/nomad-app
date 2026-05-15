@@ -14,8 +14,12 @@ import androidx.work.workDataOf
 import com.nomad.travel.R
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -151,7 +155,7 @@ class DownloadWorker(
     ) {
         val canonicalTarget = targetDir.canonicalFile
         targetDir.mkdirs()
-        CountingInputStream(FileInputStream(archive)).use { fileIn ->
+        CountingInputStream(BufferedInputStream(FileInputStream(archive), IO_BUFFER_SIZE)).use { fileIn ->
             var lastEmit = 0L
             BZip2CompressorInputStream(fileIn, true).use { bzIn ->
                 TarArchiveInputStream(bzIn).use { tarIn ->
@@ -169,7 +173,7 @@ class DownloadWorker(
                             out.mkdirs()
                         } else {
                             out.parentFile?.mkdirs()
-                            out.outputStream().use { output ->
+                            BufferedOutputStream(FileOutputStream(out), IO_BUFFER_SIZE).use { output ->
                                 val buffer = ByteArray(IO_BUFFER_SIZE)
                                 while (!isStopped) {
                                     val n = tarIn.read(buffer)
@@ -196,8 +200,8 @@ class DownloadWorker(
     }
 
     private class CountingInputStream(
-        private val delegate: FileInputStream
-    ) : java.io.InputStream() {
+        private val delegate: InputStream
+    ) : InputStream() {
         var bytesRead: Long = 0L
             private set
 
@@ -270,7 +274,7 @@ class DownloadWorker(
         const val PHASE_DOWNLOADING = "downloading"
         const val PHASE_INSTALLING = "installing"
 
-        private const val IO_BUFFER_SIZE = 256 * 1024
+        private const val IO_BUFFER_SIZE = 1024 * 1024
         private const val FOREGROUND_UPDATE_INTERVAL_MS = 1_500L
 
         fun inputData(entry: ModelEntry, dest: File): Data {

@@ -178,7 +178,7 @@ class ChatViewModel(
         pendingImage.value = null
     }
 
-    fun send(context: Context, text: String, image: Uri?) {
+    fun send(context: Context, text: String, image: Uri?, voiceMode: Boolean = false) {
         if (text.isBlank() && image == null) return
         if (responding.value) return
         val sessionId = currentSessionId.value ?: return
@@ -207,6 +207,7 @@ class ChatViewModel(
                         userText = text,
                         imageUri = image,
                         uiLanguage = Locale.getDefault().language,
+                        voiceMode = voiceMode,
                         history = historySnapshot
                     )
                 ).collect { evt ->

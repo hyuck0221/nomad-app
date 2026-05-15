@@ -44,6 +44,7 @@ data class SettingsUiState(
     val ttsEngineId: String = SystemTtsEngine.ID,
     val activeTtsModelId: String? = null,
     val ttsModelRows: List<ModelRow> = emptyList(),
+    val ttsVoicePreset: String = TtsModelCatalog.DEFAULT_VOICE_PRESET,
     val voiceLoopEnabled: Boolean = true
 )
 
@@ -80,9 +81,12 @@ class SettingsViewModel(
     private val ttsPrefsFlow = combine(
         prefs.ttsEngine,
         prefs.activeTtsModelId,
+        prefs.ttsVoicePreset,
         prefs.voiceLoopEnabled,
         prefs.autoUpdateCheck
-    ) { engine, activeTtsModelId, loop, auto -> listOf(engine, activeTtsModelId, loop, auto) }
+    ) { engine, activeTtsModelId, voicePreset, loop, auto ->
+        listOf(engine, activeTtsModelId, voicePreset, loop, auto)
+    }
 
     private val statusBundleFlow = combine(
         statusesFlow,
@@ -103,8 +107,9 @@ class SettingsViewModel(
         val cameraInstant = base[4] as Boolean
         val ttsEngineId = ttsPrefs[0] as String?
         val activeTtsModelId = ttsPrefs[1] as String?
-        val voiceLoop = ttsPrefs[2] as Boolean
-        val autoUpdate = ttsPrefs[3] as Boolean
+        val voicePreset = ttsPrefs[2] as String?
+        val voiceLoop = ttsPrefs[3] as Boolean
+        val autoUpdate = ttsPrefs[4] as Boolean
         val (llmStatuses, ttsStatuses) = statusBundle
 
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
@@ -156,6 +161,7 @@ class SettingsViewModel(
             ttsEngineId = effectiveTtsEngineId,
             activeTtsModelId = currentTtsEntry?.id,
             ttsModelRows = ttsRows,
+            ttsVoicePreset = TtsModelCatalog.normalizeVoicePreset(voicePreset),
             voiceLoopEnabled = voiceLoop
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
@@ -246,6 +252,18 @@ class SettingsViewModel(
         viewModelScope.launch { prefs.setVoiceLoopEnabled(enabled) }
     }
 
+    fun setTtsVoicePreset(preset: String) {
+        viewModelScope.launch { tts.setVoicePreset(preset) }
+    }
+
+    fun previewTtsVoice() {
+        val lang = state.value.language
+        viewModelScope.launch {
+            tts.setVoicePreset(state.value.ttsVoicePreset)
+            tts.speak(ttsPreviewText(lang), lang)
+        }
+    }
+
     fun selectModel(entry: ModelEntry) {
         if (!device.isEligible(entry)) return
         if (!gemma.isDownloaded(entry)) return
@@ -281,6 +299,14 @@ class SettingsViewModel(
     }
 
     companion object {
+        private fun ttsPreviewText(language: String): String =
+            when (language.lowercase()) {
+                "en" -> "Hello, I am NOMAD AI."
+                "ja" -> "こんにちは、私はノマドAIです。"
+                "zh" -> "你好，我是 NOMAD AI。"
+                else -> "안녕하세요. 저는 노마드 AI입니다."
+            }
+
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {

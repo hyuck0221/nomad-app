@@ -35,8 +35,8 @@ object Prompt {
             "\n" +
             "TOOLS. DEFAULT = plain prose, NO tag. Emit a tag ONLY when its trigger below clearly " +
             "matches. At most ONE tag, at the very END of your reply, after a short natural sentence. " +
-            "The three tags below are the only ones allowed — never invent other XML-like tags or " +
-            "closing tags.\n" +
+            "The uppercase tool tags below are the only tool tags allowed — never invent other " +
+            "uppercase XML-like tags or closing tags.\n" +
             "\n" +
             "<EXPENSE amount=\"N\" currency=\"ISO\" category=\"food|transport|stay|misc\" note=\"SHORT\">\n" +
             "  When: user logs money they already spent (\"점심 만원 썼어\", \"paid 20 USD for taxi\").\n" +
@@ -84,6 +84,14 @@ object Prompt {
             "restate your name or capabilities, or say things like \"Hello\" / \"I'm NOMAD AI\". " +
             "Jump straight to answering the current message."
 
+    private const val VOICE_MODE_RULE =
+        "VOICE MODE: Your reply will be read aloud with Supertonic 3 TTS. When it would sound " +
+            "natural, you may use the lowercase expression tags <laugh>, <breath>, and <sigh> " +
+            "sparingly. Put them between sentences or before a sentence, never inside words. " +
+            "Use them only for light conversational affect, such as a soft laugh, a natural breath, " +
+            "or a sympathetic sigh. Do not use expression tags in serious, factual, emergency, " +
+            "legal, medical, financial, or safety-critical answers. Do not explain the tags."
+
     data class Built(val systemInstruction: String, val userMessage: String)
 
     data class ContextWindow(
@@ -98,7 +106,8 @@ object Prompt {
         userText: String,
         ocrBlock: String?,
         customSystemPrompt: String? = null,
-        window: ContextWindow = ContextWindow(emptyList())
+        window: ContextWindow = ContextWindow(emptyList()),
+        voiceMode: Boolean = false
     ): Built {
         val lang = langName(uiLanguage)
         val extra = customSystemPrompt?.trim().orEmpty()
@@ -123,6 +132,10 @@ object Prompt {
             if (midConversation) {
                 append(' ')
                 append(MID_CONVERSATION_RULE)
+            }
+            if (voiceMode) {
+                append(' ')
+                append(VOICE_MODE_RULE)
             }
             if (extra.isNotEmpty()) {
                 append(' ')

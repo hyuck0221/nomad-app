@@ -23,6 +23,7 @@ class UserPrefs(private val context: Context) {
     private val KEY_CAMERA_INSTANT_PREVIEW = booleanPreferencesKey("camera_instant_preview")
     private val KEY_TTS_ENGINE = stringPreferencesKey("tts_engine")
     private val KEY_ACTIVE_TTS_MODEL = stringPreferencesKey("active_tts_model_id")
+    private val KEY_TTS_VOICE_PRESET = stringPreferencesKey("tts_voice_preset")
     private val KEY_VOICE_LOOP = booleanPreferencesKey("voice_loop_enabled")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
@@ -34,6 +35,7 @@ class UserPrefs(private val context: Context) {
     val cameraInstantPreview: Flow<Boolean> = context.dataStore.data.map { it[KEY_CAMERA_INSTANT_PREVIEW] == true }
     val ttsEngine: Flow<String?> = context.dataStore.data.map { it[KEY_TTS_ENGINE] }
     val activeTtsModelId: Flow<String?> = context.dataStore.data.map { it[KEY_ACTIVE_TTS_MODEL] }
+    val ttsVoicePreset: Flow<String?> = context.dataStore.data.map { it[KEY_TTS_VOICE_PRESET] }
     val voiceLoopEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_VOICE_LOOP] != false }
 
     suspend fun languageBlocking(): String? = language.first()
@@ -84,6 +86,10 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setActiveTtsModelId(id: String) {
         context.dataStore.edit { it[KEY_ACTIVE_TTS_MODEL] = id }
+    }
+
+    suspend fun setTtsVoicePreset(preset: String) {
+        context.dataStore.edit { it[KEY_TTS_VOICE_PRESET] = preset }
     }
 
     suspend fun voiceLoopEnabledBlocking(): Boolean =

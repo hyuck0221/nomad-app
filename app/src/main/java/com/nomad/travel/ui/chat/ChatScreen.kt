@@ -248,7 +248,7 @@ fun ChatScreen(
                 streamingSpeechText = ""
                 streamedSpeechActive = false
                 if (isRespondingState.value) vm.cancelAndAwait()
-                vm.send(context, text, null)
+                vm.send(context, text, null, voiceMode = true)
             }
         }
     }
@@ -1110,7 +1110,7 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
         val rendered = remember(msg.text, msg.streaming, isUser) {
             if (isUser) AnnotatedString(msg.text)
             else renderMarkdown(
-                text = msg.text,
+                text = stripTtsExpressionTags(msg.text),
                 appendCaret = msg.streaming
             )
         }
@@ -1158,7 +1158,7 @@ private fun ImageMessageBubble(
         if (msg.text.isNotBlank()) {
             val rendered = remember(msg.text, msg.streaming, isUser) {
                 if (isUser) AnnotatedString(msg.text)
-                else renderMarkdown(text = msg.text, appendCaret = msg.streaming)
+                else renderMarkdown(text = stripTtsExpressionTags(msg.text), appendCaret = msg.streaming)
             }
             Text(
                 text = rendered,
@@ -1871,6 +1871,11 @@ private fun TranslateModeCard(
 }
 
 private data class TtsChunk(val text: String, val endIndex: Int)
+
+private val TTS_EXPRESSION_TAGS = Regex("</?(laugh|breath|sigh)\\s*/?>", RegexOption.IGNORE_CASE)
+
+private fun stripTtsExpressionTags(text: String): String =
+    TTS_EXPRESSION_TAGS.replace(text, "").replace(Regex("[ \\t]{2,}"), " ").trim()
 
 private fun nextSpeakableTtsChunk(text: String, startIndex: Int, final: Boolean): TtsChunk? {
     if (startIndex >= text.length) return null

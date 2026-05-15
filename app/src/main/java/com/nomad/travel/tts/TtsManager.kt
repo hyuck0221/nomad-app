@@ -50,6 +50,11 @@ class TtsManager(
                 meloEngine.setPreferredModel(id)
             }
         }
+        scope.launch {
+            prefs.ttsVoicePreset.collect { preset ->
+                meloEngine.setVoicePreset(preset)
+            }
+        }
         // Wire engine completion → manager-level callback.
         val forward: () -> Unit = { onSpeakComplete?.invoke() }
         systemEngine.onCompletion = forward
@@ -88,6 +93,10 @@ class TtsManager(
 
     suspend fun setPreferredEngine(id: String) {
         prefs.setTtsEngine(id)
+    }
+
+    suspend fun setVoicePreset(preset: String) {
+        prefs.setTtsVoicePreset(TtsModelCatalog.normalizeVoicePreset(preset))
     }
 
     /** Filesystem location where the downloader should place [entry]. */

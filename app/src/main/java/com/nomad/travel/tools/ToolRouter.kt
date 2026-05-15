@@ -22,6 +22,7 @@ class ToolRouter(
         val userText: String,
         val imageUri: Uri? = null,
         val uiLanguage: String = "ko",
+        val voiceMode: Boolean = false,
         /** Persisted prior messages for the current session, chronological. */
         val history: List<ChatMessage> = emptyList()
     )
@@ -72,7 +73,8 @@ class ToolRouter(
             userText = turn.userText,
             ocrBlock = ocrBlock,
             customSystemPrompt = customPrompt,
-            window = window
+            window = window,
+            voiceMode = turn.voiceMode
         )
 
         var lastCumulative = ""
