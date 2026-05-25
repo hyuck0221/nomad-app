@@ -54,6 +54,7 @@ class MeloTtsEngine(context: Context) : TtsEngine {
     private val threadTts = ThreadLocal<TtsHolder?>()
 
     override var onCompletion: (() -> Unit)? = null
+    override var onStart: (() -> Unit)? = null
 
     fun isModelDownloaded(entry: ModelEntry): Boolean =
         allFilesFor(entry).all { it.exists() && it.length() > 0L }
@@ -237,6 +238,7 @@ class MeloTtsEngine(context: Context) : TtsEngine {
         audioTrack.pause()
         audioTrack.flush()
         audioTrack.play()
+        onStart?.invoke()
         val written = audioTrack.write(audio.samples, 0, audio.samples.size, AudioTrack.WRITE_BLOCKING)
         if (written < 0) error("AudioTrack write failed: $written")
         waitForPlayback(audioTrack, audio.sampleRate, written.coerceAtMost(audio.samples.size), audio.generation)

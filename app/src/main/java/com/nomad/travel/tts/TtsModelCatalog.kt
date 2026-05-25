@@ -35,7 +35,7 @@ object TtsModelCatalog {
         recommended = false,
         tagline = "Lightweight local multilingual TTS for Korean, English, Japanese, and Chinese fallback",
         taglineResId = R.string.model_tts_supertonic3_tagline,
-        badges = listOf("TTS", "Supertonic 3", "KO", "EN", "JA", "ZH"),
+        badges = listOf("TTS", "Supertonic 3"),
         minRamBytes = 0L,
         warnRamBytes = 0L
     )

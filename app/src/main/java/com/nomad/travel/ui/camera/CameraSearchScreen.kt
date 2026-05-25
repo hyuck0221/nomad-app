@@ -94,6 +94,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nomad.travel.R
 import com.nomad.travel.ui.NomadHaptics
+import com.nomad.travel.ui.components.AiContentReportDialog
 import com.nomad.travel.ui.components.NomadLogoSpinner
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -102,6 +103,9 @@ import com.nomad.travel.ui.theme.NomadMuted
 import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.Executor
 
 @Composable
@@ -133,6 +137,7 @@ fun CameraSearchScreen(
     var showQueue by remember { mutableStateOf(false) }
     var deleteTargetId by remember { mutableStateOf<String?>(null) }
     var captureFlashTick by remember { mutableStateOf(0) }
+    var reportTarget by remember { mutableStateOf<QueueItem?>(null) }
     val previewItem = state.queue.firstOrNull { it.id == state.instantPreviewItemId }
     var completedHapticIds by remember { mutableStateOf(emptySet<String>()) }
     var realtimeHapticItemId by remember { mutableStateOf<String?>(null) }
@@ -179,6 +184,16 @@ fun CameraSearchScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        reportTarget?.let { target ->
+            AiContentReportDialog(
+                context = context,
+                source = "camera_search",
+                contentId = target.id,
+                content = target.answer,
+                onDismiss = { reportTarget = null }
+            )
+        }
+
         if (hasPermission) {
             CameraPreview(
                 imageCapture = imageCapture,
@@ -257,7 +272,8 @@ fun CameraSearchScreen(
             BackHandler { vm.closeInstantPreview() }
             DetailOverlay(
                 item = item,
-                onDismiss = { vm.closeInstantPreview() }
+                onDismiss = { vm.closeInstantPreview() },
+                onReport = { reportTarget = item }
             )
         }
     }
@@ -725,7 +741,12 @@ private fun IconControl(
 /* ── Detail overlay ──────────────────────────────────────────── */
 
 @Composable
-private fun DetailOverlay(item: QueueItem, onDismiss: () -> Unit) {
+private fun DetailOverlay(
+    item: QueueItem,
+    onDismiss: () -> Unit,
+    onReport: () -> Unit
+) {
+    var actionsVisible by remember(item.id) { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -762,7 +783,7 @@ private fun DetailOverlay(item: QueueItem, onDismiss: () -> Unit) {
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.Black.copy(alpha = 0.55f))
                 .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-                .clickable(enabled = false) {}
+                .clickable { actionsVisible = !actionsVisible }
                 .padding(16.dp)
         ) {
             Column(
@@ -801,7 +822,45 @@ private fun DetailOverlay(item: QueueItem, onDismiss: () -> Unit) {
                         lineHeight = 22.sp
                     )
                 )
+                if (actionsVisible) {
+                    Spacer(Modifier.size(8.dp))
+                    CameraAnswerMetaRow(
+                        sentAt = remember(item.createdAtMs) { formatCameraTime(item.createdAtMs) },
+                        canReport = item.answer.isNotBlank() && item.errorMessage == null,
+                        onReport = onReport
+                    )
+                }
             }
         }
     }
 }
+
+@Composable
+private fun CameraAnswerMetaRow(
+    sentAt: String,
+    canReport: Boolean,
+    onReport: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.chat_message_sent_at, sentAt),
+            style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+        )
+        if (canReport) {
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = stringResource(R.string.ai_report_action),
+                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted),
+                modifier = Modifier.clickable(onClick = onReport)
+            )
+        }
+    }
+}
+
+private fun formatCameraTime(timestamp: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))

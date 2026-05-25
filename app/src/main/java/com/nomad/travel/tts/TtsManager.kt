@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.CopyOnWriteArraySet
 
 /**
  * Routes [TtsEngine.speak] calls to the right backend based on the user's
@@ -31,9 +32,12 @@ class TtsManager(
     val preferredEngine: StateFlow<String> = preferredEngineId.asStateFlow()
 
     private var lastEngine: TtsEngine = systemEngine
+    private val startListeners = CopyOnWriteArraySet<() -> Unit>()
+    private val completionListeners = CopyOnWriteArraySet<() -> Unit>()
 
     /** External callers (e.g. conversation mode) listen here for utterance completion. */
     var onSpeakComplete: (() -> Unit)? = null
+    var onSpeakStart: (() -> Unit)? = null
 
     init {
         scope.launch {
@@ -56,9 +60,18 @@ class TtsManager(
             }
         }
         // Wire engine completion → manager-level callback.
-        val forward: () -> Unit = { onSpeakComplete?.invoke() }
-        systemEngine.onCompletion = forward
-        meloEngine.onCompletion = forward
+        val forwardStart: () -> Unit = {
+            onSpeakStart?.invoke()
+            startListeners.forEach { it.invoke() }
+        }
+        val forwardCompletion: () -> Unit = {
+            onSpeakComplete?.invoke()
+            completionListeners.forEach { it.invoke() }
+        }
+        systemEngine.onStart = forwardStart
+        meloEngine.onStart = forwardStart
+        systemEngine.onCompletion = forwardCompletion
+        meloEngine.onCompletion = forwardCompletion
     }
 
     fun speak(text: String, languageCode: String) {
@@ -89,6 +102,22 @@ class TtsManager(
     fun shutdown() {
         systemEngine.shutdown()
         meloEngine.shutdown()
+    }
+
+    fun addSpeakStartListener(listener: () -> Unit) {
+        startListeners.add(listener)
+    }
+
+    fun removeSpeakStartListener(listener: () -> Unit) {
+        startListeners.remove(listener)
+    }
+
+    fun addSpeakCompleteListener(listener: () -> Unit) {
+        completionListeners.add(listener)
+    }
+
+    fun removeSpeakCompleteListener(listener: () -> Unit) {
+        completionListeners.remove(listener)
     }
 
     suspend fun setPreferredEngine(id: String) {

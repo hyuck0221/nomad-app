@@ -19,6 +19,7 @@
     <string name="chat_empty_body">メニュー翻訳 · 観光地検索 ·\n為替/支出管理 · 現地情報まで、\n何でも聞いてください。</string>
     <string name="chat_input_placeholder">メッセージを入力…</string>
     <string name="chat_image_attached">画像を添付しました</string>
+    <string name="chat_message_sent_at">送信 %1$s</string>
     <string name="chat_suggestion_1">📍 東京3日間の旅程を立てて</string>
     <string name="chat_suggestion_2">💴 今日の円レートを教えて</string>
     <string name="chat_suggestion_3">🍜 このメニューを教えて</string>
@@ -81,6 +82,14 @@
     <string name="common_ok">OK</string>
     <string name="common_yes">はい</string>
     <string name="common_no">いいえ</string>
+    <string name="common_next">次へ</string>
+    <string name="common_previous">戻る</string>
+    <string name="ai_report_action">報告</string>
+    <string name="ai_report_title">AI の回答を報告</string>
+    <string name="ai_report_body">不快または安全でない AI 生成コンテンツを報告してください。報告はアプリ内で送信されます。</string>
+    <string name="ai_report_hint">問題の内容を入力してください</string>
+    <string name="ai_report_submit">報告を送信</string>
+    <string name="ai_report_submitted">報告を受け付けました。確認と改善に活用します。</string>
 
     <string name="exit_confirm_title">終了しますか？</string>
 
@@ -125,6 +134,25 @@
     <string name="setup_upgrade_desc">高性能端末（RAM 8 GB 以上）でのみ利用できます。標準版でも十分です。</string>
     <string name="setup_upgrade_expand">アップグレード版を表示</string>
     <string name="setup_upgrade_collapse">閉じる</string>
+    <string name="setup_bundle_section">セットアップを選択</string>
+    <string name="setup_plan_light_title">最軽量</string>
+    <string name="setup_plan_light_body">Gemma4 2B のみをインストールします。容量を抑えてすぐ始められます。</string>
+    <string name="setup_plan_light_meta">Gemma4 2B · システム TTS</string>
+    <string name="setup_plan_balanced_title">おすすめ構成</string>
+    <string name="setup_plan_balanced_body">Gemma4 2B と Supertonic 3 音声モデルを一緒にインストールします。</string>
+    <string name="setup_plan_balanced_meta">Gemma4 2B · Supertonic 3 TTS</string>
+    <string name="setup_plan_max_title">最大性能</string>
+    <string name="setup_plan_max_body">Gemma4 4B と Supertonic 3 で、より豊かな回答とローカル AI 音声を使います。</string>
+    <string name="setup_plan_max_meta">Gemma4 4B · Supertonic 3 TTS</string>
+    <string name="setup_plan_custom_title">手動で選択</string>
+    <string name="setup_plan_custom_body">チャットモデルと TTS モデルを個別に選びます。TTS モデルなしならシステム TTS を使います。</string>
+    <string name="setup_plan_custom_meta">チャットモデル · 音声モデルを手動選択</string>
+    <string name="setup_install_section">インストール対象</string>
+    <string name="setup_install_section_body">上で選んだ構成に応じて、実際にダウンロードして使用するモデルです。</string>
+    <string name="setup_custom_chat_model">チャットモデル</string>
+    <string name="setup_custom_tts_model">音声モデル</string>
+    <string name="setup_system_tts_title">システム TTS を使用</string>
+    <string name="setup_system_tts_body">追加の音声モデルを入れず、Android 標準の音声を使います。</string>
 
     <string name="model_cancel_confirm_title">ダウンロードを中止しますか？</string>
     <string name="model_cancel_confirm_body">これまでの進捗は失われます。</string>
@@ -192,6 +220,7 @@
     <string name="settings_tts_voice_preset">Supertonic 音声プリセット</string>
     <string name="settings_tts_voice_preset_body">音声会話で使う標準の声を選びます。</string>
     <string name="settings_tts_voice_preview">選択したプリセットを試聴</string>
+    <string name="settings_tts_voice_preview_loading">音声を準備中…</string>
     <string name="settings_model_llm_group">テキストモデル</string>
     <string name="settings_model_tts_group">音声モデル</string>
     <string name="settings_model_internal_tts_name">内蔵TTS（標準）</string>

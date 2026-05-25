@@ -133,6 +133,7 @@ import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
 import com.nomad.travel.data.chat.ChatSessionEntity
 import com.nomad.travel.ui.NomadHaptics
+import com.nomad.travel.ui.components.AiContentReportDialog
 import com.nomad.travel.ui.components.NomadLogoSpinner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -145,6 +146,8 @@ import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
 import com.nomad.travel.ui.theme.NomadUserBubble
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -159,6 +162,7 @@ fun ChatScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var input by remember { mutableStateOf("") }
+    var reportTarget by remember { mutableStateOf<ChatMessage?>(null) }
     val pendingImage = state.pendingImage
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -328,6 +332,17 @@ fun ChatScreen(
         tts.onSpeakComplete = null
         onDispose { tts.onSpeakComplete = null }
     }
+
+    reportTarget?.let { target ->
+        AiContentReportDialog(
+            context = context,
+            source = "chat",
+            contentId = target.id,
+            content = target.text,
+            onDismiss = { reportTarget = null }
+        )
+    }
+
     // Suppress unused-variable warnings for prefs flags that the dialog reads.
     @Suppress("UNUSED_EXPRESSION") voiceLoopState
     @Suppress("UNUSED_EXPRESSION") voiceLoopEnabled
@@ -384,6 +399,7 @@ fun ChatScreen(
             onCancel = { vm.cancelResponse() },
             onOpenMenuView = onOpenMenuView,
             onImageClick = { viewerImage = it },
+            onReport = { reportTarget = it },
             onResolveCurrency = { live -> vm.resolveCurrency(live) },
             onResolveAsk = { option -> vm.resolveAsk(context, option) },
             onDismissPending = { vm.dismissPending() },
@@ -513,6 +529,7 @@ private fun ChatScreenBody(
     onVoice: () -> Unit,
     onOpenMenuView: (Uri, String) -> Unit,
     onImageClick: (Uri) -> Unit,
+    onReport: (ChatMessage) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
     onDismissPending: () -> Unit
@@ -672,7 +689,8 @@ private fun ChatScreenBody(
                                 msg = msg,
                                 menuImageUri = priorImageUri,
                                 onOpenMenuView = onOpenMenuView,
-                                onImageClick = onImageClick
+                                onImageClick = onImageClick,
+                                onReport = { onReport(msg) }
                             )
                         }
                     }
@@ -988,9 +1006,16 @@ private fun MessageRow(
     msg: ChatMessage,
     menuImageUri: Uri? = null,
     onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
-    onImageClick: (Uri) -> Unit = {}
+    onImageClick: (Uri) -> Unit = {},
+    onReport: () -> Unit = {}
 ) {
     val isUser = msg.role == Role.USER
+    var actionsVisible by remember(msg.id) { mutableStateOf(false) }
+    val canReport = !isUser &&
+        !msg.pending &&
+        !msg.streaming &&
+        msg.text.isNotBlank() &&
+        msg.toolTag != "error"
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
@@ -1007,7 +1032,11 @@ private fun MessageRow(
                 if (msg.imageUri != null) {
                     ImageMessageBubble(msg, isUser, onImageClick)
                 } else if (!(isUser && msg.text.isBlank())) {
-                    MessageBubble(msg, isUser)
+                    MessageBubble(
+                        msg = msg,
+                        isUser = isUser,
+                        onClick = { actionsVisible = !actionsVisible }
+                    )
                 }
                 if (!isUser && msg.toolTag == "menu_translate" && menuImageUri != null && !msg.streaming) {
                     Spacer(Modifier.size(6.dp))
@@ -1026,7 +1055,42 @@ private fun MessageRow(
                         )
                     }
                 }
+                if (actionsVisible && !msg.pending && !msg.streaming) {
+                    Spacer(Modifier.size(4.dp))
+                    MessageMetaRow(
+                        sentAt = remember(msg.createdAt) { formatMessageTime(msg.createdAt) },
+                        canReport = canReport,
+                        onReport = onReport
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun MessageMetaRow(
+    sentAt: String,
+    canReport: Boolean,
+    onReport: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.chat_message_sent_at, sentAt),
+            style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+        )
+        if (canReport) {
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = stringResource(R.string.ai_report_action),
+                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted),
+                modifier = Modifier.clickable(onClick = onReport)
+            )
         }
     }
 }
@@ -1087,7 +1151,11 @@ private fun AssistantAvatar(thinking: Boolean = false) {
 }
 
 @Composable
-private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
+private fun MessageBubble(
+    msg: ChatMessage,
+    isUser: Boolean,
+    onClick: () -> Unit = {}
+) {
     if (msg.pending && !isUser) {
         PendingBubble(msg.id)
         return
@@ -1105,6 +1173,7 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
         modifier = Modifier
             .clip(shape)
             .background(bg)
+            .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         val rendered = remember(msg.text, msg.streaming, isUser) {
@@ -1124,6 +1193,9 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
         )
     }
 }
+
+private fun formatMessageTime(timestamp: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
 
 @Composable
 private fun ImageMessageBubble(

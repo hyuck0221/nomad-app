@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
@@ -45,6 +46,7 @@ data class SettingsUiState(
     val activeTtsModelId: String? = null,
     val ttsModelRows: List<ModelRow> = emptyList(),
     val ttsVoicePreset: String = TtsModelCatalog.DEFAULT_VOICE_PRESET,
+    val ttsVoicePreviewLoading: Boolean = false,
     val voiceLoopEnabled: Boolean = true
 )
 
@@ -59,6 +61,10 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     private val refreshTick = MutableStateFlow(0)
+    private val ttsVoicePreviewLoading = MutableStateFlow(false)
+    private val previewStartListener: () -> Unit = { ttsVoicePreviewLoading.value = false }
+    private val previewCompleteListener: () -> Unit = { ttsVoicePreviewLoading.value = false }
+    private var previewRequestId = 0L
 
     private val statusesFlow = combine(
         ModelCatalog.all.map { downloader.status(it) }
@@ -93,13 +99,20 @@ class SettingsViewModel(
         ttsStatusesFlow
     ) { llm, tts -> llm to tts }
 
+    private val extrasFlow = combine(
+        refreshTick,
+        updateManager.state,
+        ttsVoicePreviewLoading
+    ) { _, updateState, previewLoading ->
+        updateState to previewLoading
+    }
+
     val state: StateFlow<SettingsUiState> = combine(
         basePrefsFlow,
         ttsPrefsFlow,
         statusBundleFlow,
-        refreshTick,
-        updateManager.state
-    ) { base, ttsPrefs, statusBundle, _, uState ->
+        extrasFlow
+    ) { base, ttsPrefs, statusBundle, extras ->
         val lang = base[0] as String?
         val prompt = base[1] as String?
         val activeId = base[2] as String?
@@ -111,6 +124,7 @@ class SettingsViewModel(
         val voiceLoop = ttsPrefs[3] as Boolean
         val autoUpdate = ttsPrefs[4] as Boolean
         val (llmStatuses, ttsStatuses) = statusBundle
+        val (uState, previewLoading) = extras
 
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
             ModelRow(
@@ -162,9 +176,15 @@ class SettingsViewModel(
             activeTtsModelId = currentTtsEntry?.id,
             ttsModelRows = ttsRows,
             ttsVoicePreset = TtsModelCatalog.normalizeVoicePreset(voicePreset),
+            ttsVoicePreviewLoading = previewLoading,
             voiceLoopEnabled = voiceLoop
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
+
+    init {
+        tts.addSpeakStartListener(previewStartListener)
+        tts.addSpeakCompleteListener(previewCompleteListener)
+    }
 
     fun setLanguage(code: String) {
         viewModelScope.launch {
@@ -258,10 +278,24 @@ class SettingsViewModel(
 
     fun previewTtsVoice() {
         val lang = state.value.language
+        val requestId = ++previewRequestId
+        ttsVoicePreviewLoading.value = true
         viewModelScope.launch {
             tts.setVoicePreset(state.value.ttsVoicePreset)
             tts.speak(ttsPreviewText(lang), lang)
         }
+        viewModelScope.launch {
+            delay(PREVIEW_LOADING_TIMEOUT_MS)
+            if (previewRequestId == requestId) {
+                ttsVoicePreviewLoading.value = false
+            }
+        }
+    }
+
+    override fun onCleared() {
+        tts.removeSpeakStartListener(previewStartListener)
+        tts.removeSpeakCompleteListener(previewCompleteListener)
+        super.onCleared()
     }
 
     fun selectModel(entry: ModelEntry) {
@@ -306,6 +340,8 @@ class SettingsViewModel(
                 "zh" -> "你好，我是 NOMAD AI。"
                 else -> "안녕하세요. 저는 노마드 AI입니다."
             }
+
+        private const val PREVIEW_LOADING_TIMEOUT_MS = 10_000L
 
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

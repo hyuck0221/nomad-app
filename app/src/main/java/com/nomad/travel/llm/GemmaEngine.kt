@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -75,25 +77,29 @@ class GemmaEngine(
 
     @Volatile private var engine: Engine? = null
     @Volatile private var loadedEntryId: String? = null
+    private val loadMutex = Mutex()
+    private val inferenceMutex = Mutex()
 
     suspend fun ensureLoaded(): Boolean = withContext(Dispatchers.IO) {
-        val active = activeEntryBlocking()
-        if (engine != null && loadedEntryId == active.id) return@withContext true
-        if (!isDownloaded(active)) return@withContext false
-        if (!device.isEligible(active)) {
-            throw ModelNotEligibleException(active, device.totalRamGb())
+        loadMutex.withLock {
+            val active = activeEntryBlocking()
+            if (engine != null && loadedEntryId == active.id) return@withLock true
+            if (!isDownloaded(active)) return@withLock false
+            if (!device.isEligible(active)) {
+                throw ModelNotEligibleException(active, device.totalRamGb())
+            }
+            close()
+            val config = EngineConfig(
+                modelPath = fileFor(active).absolutePath,
+                backend = Backend.CPU(),
+                cacheDir = cacheDir.absolutePath
+            )
+            val e = Engine(config)
+            e.initialize()
+            engine = e
+            loadedEntryId = active.id
+            true
         }
-        close()
-        val config = EngineConfig(
-            modelPath = fileFor(active).absolutePath,
-            backend = Backend.CPU(),
-            cacheDir = cacheDir.absolutePath
-        )
-        val e = Engine(config)
-        e.initialize()
-        engine = e
-        loadedEntryId = active.id
-        true
     }
 
     /** Drop any current session so the next [ensureLoaded] picks up a new model. */
@@ -101,16 +107,18 @@ class GemmaEngine(
 
     suspend fun generate(systemInstruction: String, userMessage: String): String =
         withContext(Dispatchers.IO) {
-            val e = requireNotNull(engine) { "Model not loaded — call ensureLoaded()" }
-            val convConfig = ConversationConfig(
-                systemInstruction = Contents.of(systemInstruction)
-            )
-            val conversation = e.createConversation(convConfig)
-            try {
-                val finalMessage = conversation.sendMessage(userMessage)
-                extractText(finalMessage)
-            } finally {
-                runCatching { conversation.close() }
+            inferenceMutex.withLock {
+                val e = requireNotNull(engine) { "Model not loaded — call ensureLoaded()" }
+                val convConfig = ConversationConfig(
+                    systemInstruction = Contents.of(systemInstruction)
+                )
+                val conversation = e.createConversation(convConfig)
+                try {
+                    val finalMessage = conversation.sendMessage(userMessage)
+                    extractText(finalMessage)
+                } finally {
+                    runCatching { conversation.close() }
+                }
             }
         }
 
@@ -122,23 +130,25 @@ class GemmaEngine(
         systemInstruction: String,
         userMessage: String
     ): Flow<String> = flow {
-        val e = requireNotNull(engine) { "Model not loaded — call ensureLoaded()" }
-        val convConfig = ConversationConfig(
-            systemInstruction = Contents.of(systemInstruction)
-        )
-        val conversation = e.createConversation(convConfig)
-        try {
-            var acc = ""
-            conversation.sendMessageAsync(userMessage).collect { msg ->
-                val chunk = extractText(msg)
-                // LiteRT-LM emits deltas; if a cumulative build ever arrives
-                // (chunk already contains the accumulator), don't double it.
-                acc = if (chunk.startsWith(acc) && chunk.length >= acc.length) chunk
-                else acc + chunk
-                emit(acc)
+        inferenceMutex.withLock {
+            val e = requireNotNull(engine) { "Model not loaded — call ensureLoaded()" }
+            val convConfig = ConversationConfig(
+                systemInstruction = Contents.of(systemInstruction)
+            )
+            val conversation = e.createConversation(convConfig)
+            try {
+                var acc = ""
+                conversation.sendMessageAsync(userMessage).collect { msg ->
+                    val chunk = extractText(msg)
+                    // LiteRT-LM emits deltas; if a cumulative build ever arrives
+                    // (chunk already contains the accumulator), don't double it.
+                    acc = if (chunk.startsWith(acc) && chunk.length >= acc.length) chunk
+                    else acc + chunk
+                    emit(acc)
+                }
+            } finally {
+                runCatching { conversation.close() }
             }
-        } finally {
-            runCatching { conversation.close() }
         }
     }.flowOn(Dispatchers.IO)
 

@@ -26,4 +26,7 @@ interface TtsEngine {
 
     /** Optional callback invoked when the most recent [speak] finishes. */
     var onCompletion: (() -> Unit)?
+
+    /** Optional callback invoked when audio playback actually starts. */
+    var onStart: (() -> Unit)?
 }

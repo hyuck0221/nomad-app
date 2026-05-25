@@ -13,6 +13,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.nomad.travel.NomadApp
 import com.nomad.travel.llm.GemmaEngine
 import com.nomad.travel.tts.TtsManager
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -159,30 +160,34 @@ class TranslateViewModel(
     fun translateText() {
         val s = _translate.value
         if (s.sourceText.isBlank() || s.isTranslating) return
-        translateJob?.cancel()
         translateJob = viewModelScope.launch {
             _translate.update {
                 it.copy(isTranslating = true, translatedText = "", pronunciation = "")
             }
-            gemma.ensureLoaded()
-            val sysPrompt = buildTranslateSystemPrompt(s.sourceLanguage, s.targetLanguage)
-            gemma.generateStream(sysPrompt, s.sourceText).collect { cumulative ->
-                _translate.update { it.copy(translatedText = cumulative) }
-            }
-            val finalText = _translate.value.translatedText
-            _translate.update { it.copy(isTranslating = false) }
-
-            val uiLang = Locale.getDefault().language
-            if (finalText.isNotBlank() && needsPronunciation(s.targetLanguage.code, uiLang)) {
-                val pron = runCatching {
-                    gemma.generate(
-                        systemInstruction = buildPronunciationSystemPrompt(s.targetLanguage, uiLang),
-                        userMessage = finalText
-                    ).trim()
-                }.getOrDefault("")
-                if (pron.isNotEmpty() && pron != finalText) {
-                    _translate.update { it.copy(pronunciation = pron) }
+            try {
+                gemma.ensureLoaded()
+                val sysPrompt = buildTranslateSystemPrompt(s.sourceLanguage, s.targetLanguage)
+                gemma.generateStream(sysPrompt, s.sourceText).collect { cumulative ->
+                    _translate.update { it.copy(translatedText = cumulative) }
                 }
+                val finalText = _translate.value.translatedText
+
+                val uiLang = Locale.getDefault().language
+                if (finalText.isNotBlank() && needsPronunciation(s.targetLanguage.code, uiLang)) {
+                    val pron = runCatching {
+                        gemma.generate(
+                            systemInstruction = buildPronunciationSystemPrompt(s.targetLanguage, uiLang),
+                            userMessage = finalText
+                        ).trim()
+                    }.getOrDefault("")
+                    if (pron.isNotEmpty() && pron != finalText) {
+                        _translate.update { it.copy(pronunciation = pron) }
+                    }
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } finally {
+                _translate.update { it.copy(isTranslating = false) }
             }
         }
     }
@@ -262,7 +267,7 @@ class TranslateViewModel(
     /** I typed/spoke → show my text on my side, translate to partner's language on their side */
     fun sendMyMessage() {
         val s = _interpret.value
-        if (s.myInput.isBlank() || s.isTheirAreaTranslating) return
+        if (s.myInput.isBlank() || s.isMyAreaTranslating || s.isTheirAreaTranslating) return
         val text = s.myInput.trim()
 
         _interpret.update {
@@ -275,12 +280,17 @@ class TranslateViewModel(
         }
 
         interpretJob = viewModelScope.launch {
-            gemma.ensureLoaded()
-            val sysPrompt = buildTranslateSystemPrompt(s.myLanguage, s.theirLanguage)
-            gemma.generateStream(sysPrompt, text).collect { cumulative ->
-                _interpret.update { it.copy(theirDisplayText = cumulative) }
+            try {
+                gemma.ensureLoaded()
+                val sysPrompt = buildTranslateSystemPrompt(s.myLanguage, s.theirLanguage)
+                gemma.generateStream(sysPrompt, text).collect { cumulative ->
+                    _interpret.update { it.copy(theirDisplayText = cumulative) }
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } finally {
+                _interpret.update { it.copy(isTheirAreaTranslating = false) }
             }
-            _interpret.update { it.copy(isTheirAreaTranslating = false) }
         }
     }
 
@@ -288,6 +298,7 @@ class TranslateViewModel(
     fun sendPartnerMessage(text: String) {
         if (text.isBlank()) return
         val s = _interpret.value
+        if (s.isMyAreaTranslating || s.isTheirAreaTranslating) return
 
         _interpret.update {
             it.copy(
@@ -298,12 +309,17 @@ class TranslateViewModel(
         }
 
         interpretJob = viewModelScope.launch {
-            gemma.ensureLoaded()
-            val sysPrompt = buildTranslateSystemPrompt(s.theirLanguage, s.myLanguage)
-            gemma.generateStream(sysPrompt, text).collect { cumulative ->
-                _interpret.update { it.copy(myDisplayText = cumulative) }
+            try {
+                gemma.ensureLoaded()
+                val sysPrompt = buildTranslateSystemPrompt(s.theirLanguage, s.myLanguage)
+                gemma.generateStream(sysPrompt, text).collect { cumulative ->
+                    _interpret.update { it.copy(myDisplayText = cumulative) }
+                }
+            } catch (ce: CancellationException) {
+                throw ce
+            } finally {
+                _interpret.update { it.copy(isMyAreaTranslating = false) }
             }
-            _interpret.update { it.copy(isMyAreaTranslating = false) }
         }
     }
 

@@ -441,6 +441,9 @@ fun SettingsScreen(
                             }
                             SecondaryButton(
                                 label = stringResource(R.string.settings_tts_voice_preview),
+                                loadingLabel = stringResource(R.string.settings_tts_voice_preview_loading),
+                                loading = state.ttsVoicePreviewLoading,
+                                enabled = !state.ttsVoicePreviewLoading,
                                 onClick = { vm.previewTtsVoice() }
                             )
                         }
@@ -1133,18 +1136,38 @@ private fun PrimaryButton(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SecondaryButton(label: String, onClick: () -> Unit) {
+private fun SecondaryButton(
+    label: String,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    loadingLabel: String = label,
+    onClick: () -> Unit
+) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, NomadMuted, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 10.dp)
+            .clickable(enabled = enabled && !loading, onClick = onClick)
+            .alpha(if (enabled) 1f else 0.62f)
+            .padding(horizontal = 18.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge.copy(color = NomadMist)
-        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = NomadGlow
+                )
+            }
+            Text(
+                text = if (loading) loadingLabel else label,
+                style = MaterialTheme.typography.labelLarge.copy(color = NomadMist)
+            )
+        }
     }
 }
 

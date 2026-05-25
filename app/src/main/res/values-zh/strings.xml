@@ -19,6 +19,7 @@
     <string name="chat_empty_body">菜单翻译 · 景点搜索 ·\n汇率/记账 · 当地资讯 —\n尽管问我。</string>
     <string name="chat_input_placeholder">输入消息…</string>
     <string name="chat_image_attached">已附加图片</string>
+    <string name="chat_message_sent_at">发送于 %1$s</string>
     <string name="chat_suggestion_1">📍 帮我规划东京三日游</string>
     <string name="chat_suggestion_2">💴 今天日元汇率多少？</string>
     <string name="chat_suggestion_3">🍜 这菜单上都是什么？</string>
@@ -81,6 +82,14 @@
     <string name="common_ok">确定</string>
     <string name="common_yes">是</string>
     <string name="common_no">否</string>
+    <string name="common_next">下一步</string>
+    <string name="common_previous">上一步</string>
+    <string name="ai_report_action">举报</string>
+    <string name="ai_report_title">举报 AI 回答</string>
+    <string name="ai_report_body">举报令人不适或不安全的 AI 生成内容。举报将在应用内提交。</string>
+    <string name="ai_report_hint">请说明出现了什么问题</string>
+    <string name="ai_report_submit">提交举报</string>
+    <string name="ai_report_submitted">已收到举报。我们会用于审核和改进。</string>
 
     <string name="exit_confirm_title">要退出吗？</string>
 
@@ -125,6 +134,25 @@
     <string name="setup_upgrade_desc">仅限高配置设备（8 GB 内存或以上）。标准版已足够大多数人使用。</string>
     <string name="setup_upgrade_expand">显示升级选项</string>
     <string name="setup_upgrade_collapse">收起</string>
+    <string name="setup_bundle_section">选择安装配置</string>
+    <string name="setup_plan_light_title">最轻量</string>
+    <string name="setup_plan_light_body">仅安装 Gemma4 2B，占用空间更少，可快速开始使用。</string>
+    <string name="setup_plan_light_meta">Gemma4 2B · 系统 TTS</string>
+    <string name="setup_plan_balanced_title">最佳选择</string>
+    <string name="setup_plan_balanced_body">安装 Gemma4 2B 和 Supertonic 3 语音模型。</string>
+    <string name="setup_plan_balanced_meta">Gemma4 2B · Supertonic 3 TTS</string>
+    <string name="setup_plan_max_title">最高性能</string>
+    <string name="setup_plan_max_body">使用 Gemma4 4B 和 Supertonic 3，获得更细致的回答和本地 AI 语音。</string>
+    <string name="setup_plan_max_meta">Gemma4 4B · Supertonic 3 TTS</string>
+    <string name="setup_plan_custom_title">手动选择</string>
+    <string name="setup_plan_custom_body">分别选择聊天模型和 TTS 模型。不选择 TTS 模型时将使用系统 TTS。</string>
+    <string name="setup_plan_custom_meta">手动选择聊天模型和语音模型</string>
+    <string name="setup_install_section">将安装的内容</string>
+    <string name="setup_install_section_body">根据上方选择的配置，下面是实际会下载并使用的模型。</string>
+    <string name="setup_custom_chat_model">聊天模型</string>
+    <string name="setup_custom_tts_model">语音模型</string>
+    <string name="setup_system_tts_title">使用系统 TTS</string>
+    <string name="setup_system_tts_body">不安装额外语音模型，使用 Android 内置语音。</string>
 
     <string name="model_cancel_confirm_title">取消此下载？</string>
     <string name="model_cancel_confirm_body">已下载的进度将会丢失。</string>
@@ -192,6 +220,7 @@
     <string name="settings_tts_voice_preset">Supertonic 语音预设</string>
     <string name="settings_tts_voice_preset_body">选择语音对话使用的默认声音。</string>
     <string name="settings_tts_voice_preview">试听所选预设</string>
+    <string name="settings_tts_voice_preview_loading">正在准备语音…</string>
     <string name="settings_model_llm_group">文本模型</string>
     <string name="settings_model_tts_group">语音模型</string>
     <string name="settings_model_internal_tts_name">内置 TTS（默认）</string>

@@ -19,6 +19,7 @@
     <string name="chat_empty_body">Translate menus · Find places ·\nTrack expenses · Local tips —\nask me anything.</string>
     <string name="chat_input_placeholder">Type a message…</string>
     <string name="chat_image_attached">Image attached</string>
+    <string name="chat_message_sent_at">Sent %1$s</string>
     <string name="chat_suggestion_1">📍 Plan a 3-day Tokyo trip</string>
     <string name="chat_suggestion_2">💴 What is the JPY rate today?</string>
     <string name="chat_suggestion_3">🍜 What is on this menu?</string>
@@ -81,6 +82,14 @@
     <string name="common_ok">OK</string>
     <string name="common_yes">Yes</string>
     <string name="common_no">No</string>
+    <string name="common_next">Next</string>
+    <string name="common_previous">Previous</string>
+    <string name="ai_report_action">Report</string>
+    <string name="ai_report_title">Report AI answer</string>
+    <string name="ai_report_body">Report offensive or unsafe AI-generated content. Your report is submitted in the app.</string>
+    <string name="ai_report_hint">Tell us what went wrong</string>
+    <string name="ai_report_submit">Submit report</string>
+    <string name="ai_report_submitted">Thanks. Your report was submitted for review and improvement.</string>
 
     <string name="exit_confirm_title">Exit?</string>
 
@@ -125,6 +134,25 @@
     <string name="setup_upgrade_desc">Available only on high-end devices (8 GB RAM or more). The standard one is plenty for most users.</string>
     <string name="setup_upgrade_expand">Show upgrade option</string>
     <string name="setup_upgrade_collapse">Hide</string>
+    <string name="setup_bundle_section">Choose setup</string>
+    <string name="setup_plan_light_title">Lightest</string>
+    <string name="setup_plan_light_body">Install Gemma4 2B only. Uses less storage and gets you started quickly.</string>
+    <string name="setup_plan_light_meta">Gemma4 2B · System TTS</string>
+    <string name="setup_plan_balanced_title">Best fit</string>
+    <string name="setup_plan_balanced_body">Install Gemma4 2B with the Supertonic 3 voice model.</string>
+    <string name="setup_plan_balanced_meta">Gemma4 2B · Supertonic 3 TTS</string>
+    <string name="setup_plan_max_title">Maximum performance</string>
+    <string name="setup_plan_max_body">Use Gemma4 4B with Supertonic 3 for richer answers and local AI voice.</string>
+    <string name="setup_plan_max_meta">Gemma4 4B · Supertonic 3 TTS</string>
+    <string name="setup_plan_custom_title">Choose manually</string>
+    <string name="setup_plan_custom_body">Pick the chat model and TTS model separately. If no TTS model is selected, system TTS is used.</string>
+    <string name="setup_plan_custom_meta">Manual chat and voice model selection</string>
+    <string name="setup_install_section">What will be installed</string>
+    <string name="setup_install_section_body">These are the models that will be downloaded and used for the setup selected above.</string>
+    <string name="setup_custom_chat_model">Chat model</string>
+    <string name="setup_custom_tts_model">Voice model</string>
+    <string name="setup_system_tts_title">Use system TTS</string>
+    <string name="setup_system_tts_body">Use Android\'s built-in voice without installing an extra voice model.</string>
 
     <string name="model_cancel_confirm_title">Cancel this download?</string>
     <string name="model_cancel_confirm_body">The progress so far will be lost.</string>
@@ -192,6 +220,7 @@
     <string name="settings_tts_voice_preset">Supertonic voice preset</string>
     <string name="settings_tts_voice_preset_body">Choose the default voice for spoken conversations.</string>
     <string name="settings_tts_voice_preview">Preview selected preset</string>
+    <string name="settings_tts_voice_preview_loading">Preparing voice…</string>
     <string name="settings_model_llm_group">Text models</string>
     <string name="settings_model_tts_group">Voice models</string>
     <string name="settings_model_internal_tts_name">Internal TTS (default)</string>

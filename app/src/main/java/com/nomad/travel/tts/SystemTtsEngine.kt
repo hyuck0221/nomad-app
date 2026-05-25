@@ -19,13 +19,14 @@ class SystemTtsEngine(context: Context) : TtsEngine {
     private var pending: Pair<String, String>? = null
 
     override var onCompletion: (() -> Unit)? = null
+    override var onStart: (() -> Unit)? = null
 
     init {
         tts = TextToSpeech(appContext) { status ->
             ready = status == TextToSpeech.SUCCESS
             if (ready) {
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {}
+                    override fun onStart(utteranceId: String?) { onStart?.invoke() }
                     @Deprecated("Deprecated in Java")
                     override fun onError(utteranceId: String?) { onCompletion?.invoke() }
                     override fun onError(utteranceId: String?, errorCode: Int) {
