@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,7 +61,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -441,25 +439,13 @@ fun AuraBox(
     }
 }
 
-/* ── Fullscreen overlay with auto landscape ── */
+/* ── Fullscreen text overlay ── */
 
 @Composable
 fun FullscreenTextOverlay(
     text: String,
     onDismiss: () -> Unit
 ) {
-    val context = LocalContext.current
-    val activity = context as? Activity
-
-    // Force landscape when entering fullscreen
-    DisposableEffect(Unit) {
-        val original = activity?.requestedOrientation
-        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-        onDispose {
-            activity?.requestedOrientation = original ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
