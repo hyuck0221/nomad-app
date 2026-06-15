@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NOMAD AI</string>
-    <string name="chat_hint">メニューを撮影、観光地を検索、支出を管理 — 何でも聞いてください</string>
+    <string name="chat_hint">文章作成、要約、翻訳、コード、画像内テキストまで — 何でも聞いてください</string>
     <string name="send">送信</string>
     <string name="camera">カメラ</string>
     <string name="gallery">ギャラリー</string>
@@ -9,37 +9,41 @@
     <string name="model_missing">Gemma モデルファイルが必要です。設定から追加してください。</string>
     <string name="permission_camera_denied">カメラの権限が必要です</string>
     <string name="ocr_empty">画像から文字を検出できませんでした</string>
-    <string name="tool_menu_translate">メニュー翻訳</string>
-    <string name="tool_menu_search">メニュー検索</string>
+    <string name="tool_menu_translate">画像テキスト</string>
+    <string name="tool_menu_search">画像検索</string>
     <string name="tool_expense">支出管理</string>
-    <string name="tool_travel">旅行情報</string>
+    <string name="tool_travel">一般回答</string>
 
     <string name="chat_top_status">オフラインでも利用可能</string>
-    <string name="chat_empty_title">どこへ行きますか？</string>
-    <string name="chat_empty_body">メニュー翻訳 · 観光地検索 ·\n為替/支出管理 · 現地情報まで、\n何でも聞いてください。</string>
+    <string name="chat_empty_title">何を手伝いましょうか？</string>
+    <string name="chat_empty_body">文章作成 · 要約 · 翻訳 · コード ·\n画像テキスト解析まで、\nローカルモデルに直接聞けます。</string>
     <string name="chat_input_placeholder">メッセージを入力…</string>
     <string name="chat_image_attached">画像を添付しました</string>
     <string name="chat_message_sent_at">送信 %1$s</string>
-    <string name="chat_suggestion_1">📍 東京3日間の旅程を立てて</string>
-    <string name="chat_suggestion_2">💴 今日の円レートを教えて</string>
-    <string name="chat_suggestion_3">🍜 このメニューを教えて</string>
-    <string name="chat_suggestion_4">🗺️ 空港から市内への行き方</string>
-    <string name="chat_suggestion_5">🏯 京都日帰りおすすめ</string>
-    <string name="chat_suggestion_6">🍣 日本で絶対食べたい料理</string>
-    <string name="chat_suggestion_7">💳 海外でのカード決済のコツ</string>
-    <string name="chat_suggestion_8">🧳 バックパック旅の持ち物</string>
+    <string name="chat_copy_message">メッセージをコピー</string>
+    <string name="chat_copy_code">コードをコピー</string>
+    <string name="chat_copied">クリップボードにコピーしました</string>
+    <string name="chat_suggestion_1">✍️ この文章を自然に直して</string>
+    <string name="chat_suggestion_2">🧠 難しい概念を簡単に説明して</string>
+    <string name="chat_suggestion_3">📄 長い文章を要約して</string>
+    <string name="chat_suggestion_4">💻 Kotlin のコード例を書いて</string>
+    <string name="chat_suggestion_5">🌐 この文を英語に翻訳して</string>
+    <string name="chat_suggestion_6">📝 会議メモをタスクに整理して</string>
+    <string name="chat_suggestion_7">🔍 写真の文字を説明して</string>
+    <string name="chat_suggestion_8">💡 アイデアを5つ出して</string>
     <string name="chat_settings_desc">設定</string>
-    <string name="tool_label_menu_translate">· メニュー翻訳</string>
-    <string name="tool_label_menu_search">· メニュー検索</string>
+    <string name="tool_label_menu_translate">· 画像テキスト</string>
+    <string name="tool_label_menu_search">· 画像検索</string>
     <string name="tool_label_expense">· 支出を記録</string>
-    <string name="tool_label_travel">· 旅行情報</string>
+    <string name="tool_label_travel">· 一般回答</string>
+    <string name="tool_label_image_ocr">· 画像テキスト</string>
     <string name="tool_label_chat">· 会話</string>
     <string name="tool_label_cancelled">· キャンセル</string>
     <string name="tool_label_currency">· 為替換算</string>
     <string name="tool_label_ask">· 選択が必要</string>
 
-    <string name="menu_view_button">メニューを全画面で見る</string>
-    <string name="menu_view_title">メニュー翻訳</string>
+    <string name="menu_view_button">画像を全画面で見る</string>
+    <string name="menu_view_title">画像テキスト</string>
     <string name="currency_choice_title">為替レートの取得方法を選んでください</string>
     <string name="currency_choice_live">リアルタイム API</string>
     <string name="currency_choice_estimated">オフライン推定</string>
@@ -119,7 +123,7 @@
     <string name="settings_camera_instant_preview">撮影後すぐに回答を見る</string>
     <string name="settings_camera_instant_preview_body">撮影するとその写真が即座にフルスクリーンで開き、回答が生成される様子をリアルタイムで確認できます。</string>
 
-    <string name="language_subtitle">あなたの旅行AIパートナー</string>
+    <string name="language_subtitle">Android で動くローカル LLM</string>
     <string name="language_select_title">言語を選択</string>
     <string name="language_continue">続行</string>
 

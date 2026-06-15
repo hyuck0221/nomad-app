@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NOMAD AI</string>
-    <string name="chat_hint">Snap a menu, find places, track spending — ask me anything</string>
+    <string name="chat_hint">Writing, summaries, translation, code, image text — ask me anything</string>
     <string name="send">Send</string>
     <string name="camera">Camera</string>
     <string name="gallery">Gallery</string>
@@ -9,37 +9,41 @@
     <string name="model_missing">Gemma model file required. Please add it in Settings.</string>
     <string name="permission_camera_denied">Camera permission is required</string>
     <string name="ocr_empty">No text detected in the image</string>
-    <string name="tool_menu_translate">Menu Translate</string>
-    <string name="tool_menu_search">Menu Search</string>
+    <string name="tool_menu_translate">Image Text</string>
+    <string name="tool_menu_search">Image Search</string>
     <string name="tool_expense">Expense</string>
-    <string name="tool_travel">Travel Info</string>
+    <string name="tool_travel">General Answer</string>
 
     <string name="chat_top_status">Works offline too</string>
-    <string name="chat_empty_title">Where are you headed?</string>
-    <string name="chat_empty_body">Translate menus · Find places ·\nTrack expenses · Local tips —\nask me anything.</string>
+    <string name="chat_empty_title">What can I help with?</string>
+    <string name="chat_empty_body">Writing · Summaries · Translation · Code ·\nImage text analysis —\nask the local model directly.</string>
     <string name="chat_input_placeholder">Type a message…</string>
     <string name="chat_image_attached">Image attached</string>
     <string name="chat_message_sent_at">Sent %1$s</string>
-    <string name="chat_suggestion_1">📍 Plan a 3-day Tokyo trip</string>
-    <string name="chat_suggestion_2">💴 What is the JPY rate today?</string>
-    <string name="chat_suggestion_3">🍜 What is on this menu?</string>
-    <string name="chat_suggestion_4">🗺️ How do I get from the airport to downtown?</string>
-    <string name="chat_suggestion_5">🏯 Kyoto day-trip ideas</string>
-    <string name="chat_suggestion_6">🍣 Must-try foods in Japan</string>
-    <string name="chat_suggestion_7">💳 Tips for paying abroad with a card</string>
-    <string name="chat_suggestion_8">🧳 Backpacking packing list</string>
+    <string name="chat_copy_message">Copy message</string>
+    <string name="chat_copy_code">Copy code</string>
+    <string name="chat_copied">Copied to clipboard</string>
+    <string name="chat_suggestion_1">✍️ Make this sentence sound natural</string>
+    <string name="chat_suggestion_2">🧠 Explain a hard concept simply</string>
+    <string name="chat_suggestion_3">📄 Summarize a long article</string>
+    <string name="chat_suggestion_4">💻 Write a Kotlin code example</string>
+    <string name="chat_suggestion_5">🌐 Translate this into English</string>
+    <string name="chat_suggestion_6">📝 Turn meeting notes into tasks</string>
+    <string name="chat_suggestion_7">🔍 Explain text in a photo</string>
+    <string name="chat_suggestion_8">💡 Suggest five ideas</string>
     <string name="chat_settings_desc">Settings</string>
-    <string name="tool_label_menu_translate">· Menu translation</string>
-    <string name="tool_label_menu_search">· Menu search</string>
+    <string name="tool_label_menu_translate">· Image text</string>
+    <string name="tool_label_menu_search">· Image search</string>
     <string name="tool_label_expense">· Expense logged</string>
-    <string name="tool_label_travel">· Travel info</string>
+    <string name="tool_label_travel">· General answer</string>
+    <string name="tool_label_image_ocr">· Image text</string>
     <string name="tool_label_chat">· Conversation</string>
     <string name="tool_label_cancelled">· Cancelled</string>
     <string name="tool_label_currency">· Currency</string>
     <string name="tool_label_ask">· Choice needed</string>
 
-    <string name="menu_view_button">View full menu</string>
-    <string name="menu_view_title">Menu translation</string>
+    <string name="menu_view_button">View full image</string>
+    <string name="menu_view_title">Image text</string>
     <string name="currency_choice_title">How should I look up the rate?</string>
     <string name="currency_choice_live">Live API lookup</string>
     <string name="currency_choice_estimated">Offline estimate</string>
@@ -119,7 +123,7 @@
     <string name="settings_camera_instant_preview">Show answer instantly after capture</string>
     <string name="settings_camera_instant_preview_body">When you take a photo, it opens fullscreen immediately and you can watch the answer being generated in real time.</string>
 
-    <string name="language_subtitle">Your AI travel companion</string>
+    <string name="language_subtitle">A local LLM running on Android</string>
     <string name="language_select_title">Select language</string>
     <string name="language_continue">Continue</string>
 

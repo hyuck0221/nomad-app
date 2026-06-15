@@ -1,9 +1,12 @@
 package com.nomad.travel.ui.chat
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,8 +29,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,10 +62,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
@@ -85,10 +95,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -108,6 +120,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -534,6 +547,8 @@ private fun ChatScreenBody(
     onResolveAsk: (String) -> Unit,
     onDismissPending: () -> Unit
 ) {
+    val focusManager = LocalFocusManager.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -587,6 +602,7 @@ private fun ChatScreenBody(
         }
 
         val messageCount = state.messages.size
+        var selectionResetKey by remember { mutableStateOf(0) }
         LaunchedEffect(messageCount) {
             if (messageCount == 0) return@LaunchedEffect
             autoScroll = true
@@ -622,7 +638,14 @@ private fun ChatScreenBody(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = {
+                                selectionResetKey++
+                                focusManager.clearFocus()
+                            })
+                        },
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
@@ -690,6 +713,8 @@ private fun ChatScreenBody(
                                 menuImageUri = priorImageUri,
                                 onOpenMenuView = onOpenMenuView,
                                 onImageClick = onImageClick,
+                                selectionResetKey = selectionResetKey,
+                                onClearTextSelection = { selectionResetKey++ },
                                 onReport = { onReport(msg) }
                             )
                         }
@@ -856,7 +881,7 @@ private fun ChatTopBar(
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                text = "NOMAD AI",
+                text = stringResource(R.string.app_name),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -1007,15 +1032,22 @@ private fun MessageRow(
     menuImageUri: Uri? = null,
     onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
     onImageClick: (Uri) -> Unit = {},
+    selectionResetKey: Int = 0,
+    onClearTextSelection: () -> Unit = {},
     onReport: () -> Unit = {}
 ) {
     val isUser = msg.role == Role.USER
+    val context = LocalContext.current
     var actionsVisible by remember(msg.id) { mutableStateOf(false) }
     val canReport = !isUser &&
         !msg.pending &&
         !msg.streaming &&
         msg.text.isNotBlank() &&
         msg.toolTag != "error"
+    val copyText = remember(msg.text, isUser) {
+        if (isUser) msg.text else stripTtsExpressionTags(msg.text)
+    }
+    val canCopy = copyText.isNotBlank() && !msg.pending && !msg.streaming
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
@@ -1030,12 +1062,27 @@ private fun MessageRow(
         ) {
             Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
                 if (msg.imageUri != null) {
-                    ImageMessageBubble(msg, isUser, onImageClick)
+                    ImageMessageBubble(
+                        msg = msg,
+                        isUser = isUser,
+                        onImageClick = onImageClick,
+                        selectionResetKey = selectionResetKey,
+                        onClick = {
+                            onClearTextSelection()
+                            actionsVisible = !actionsVisible
+                        },
+                        onCopyCode = { code -> context.copyToClipboard(code) }
+                    )
                 } else if (!(isUser && msg.text.isBlank())) {
                     MessageBubble(
                         msg = msg,
                         isUser = isUser,
-                        onClick = { actionsVisible = !actionsVisible }
+                        selectionResetKey = selectionResetKey,
+                        onClick = {
+                            onClearTextSelection()
+                            actionsVisible = !actionsVisible
+                        },
+                        onCopyCode = { code -> context.copyToClipboard(code) }
                     )
                 }
                 if (!isUser && msg.toolTag == "menu_translate" && menuImageUri != null && !msg.streaming) {
@@ -1060,7 +1107,9 @@ private fun MessageRow(
                     MessageMetaRow(
                         sentAt = remember(msg.createdAt) { formatMessageTime(msg.createdAt) },
                         canReport = canReport,
-                        onReport = onReport
+                        canCopy = canCopy,
+                        onReport = onReport,
+                        onCopy = { context.copyToClipboard(copyText) }
                     )
                 }
             }
@@ -1072,7 +1121,9 @@ private fun MessageRow(
 private fun MessageMetaRow(
     sentAt: String,
     canReport: Boolean,
-    onReport: () -> Unit
+    canCopy: Boolean,
+    onReport: () -> Unit,
+    onCopy: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -1090,6 +1141,17 @@ private fun MessageMetaRow(
                 text = stringResource(R.string.ai_report_action),
                 style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted),
                 modifier = Modifier.clickable(onClick = onReport)
+            )
+        }
+        if (canCopy) {
+            Spacer(Modifier.size(8.dp))
+            Icon(
+                Icons.Default.ContentCopy,
+                contentDescription = stringResource(R.string.chat_copy_message),
+                tint = NomadMuted,
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable(onClick = onCopy)
             )
         }
     }
@@ -1154,7 +1216,9 @@ private fun AssistantAvatar(thinking: Boolean = false) {
 private fun MessageBubble(
     msg: ChatMessage,
     isUser: Boolean,
-    onClick: () -> Unit = {}
+    selectionResetKey: Int,
+    onClick: () -> Unit = {},
+    onCopyCode: (String) -> Unit = {}
 ) {
     if (msg.pending && !isUser) {
         PendingBubble(msg.id)
@@ -1176,20 +1240,13 @@ private fun MessageBubble(
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        val rendered = remember(msg.text, msg.streaming, isUser) {
-            if (isUser) AnnotatedString(msg.text)
-            else renderMarkdown(
-                text = stripTtsExpressionTags(msg.text),
-                appendCaret = msg.streaming
-            )
-        }
-        Text(
-            text = rendered,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                color = textColor,
-                fontSize = 15.sp,
-                lineHeight = 22.sp
-            )
+        MessageTextContent(
+            text = if (isUser) msg.text else stripTtsExpressionTags(msg.text),
+            isUser = isUser,
+            appendCaret = msg.streaming,
+            textColor = textColor,
+            selectionResetKey = selectionResetKey,
+            onCopyCode = onCopyCode
         )
     }
 }
@@ -1201,7 +1258,10 @@ private fun formatMessageTime(timestamp: Long): String =
 private fun ImageMessageBubble(
     msg: ChatMessage,
     isUser: Boolean,
-    onImageClick: (Uri) -> Unit = {}
+    onImageClick: (Uri) -> Unit = {},
+    selectionResetKey: Int,
+    onClick: () -> Unit = {},
+    onCopyCode: (String) -> Unit = {}
 ) {
     val shape = if (isUser) {
         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
@@ -1228,28 +1288,205 @@ private fun ImageMessageBubble(
             )
         }
         if (msg.text.isNotBlank()) {
-            val rendered = remember(msg.text, msg.streaming, isUser) {
-                if (isUser) AnnotatedString(msg.text)
-                else renderMarkdown(text = stripTtsExpressionTags(msg.text), appendCaret = msg.streaming)
-            }
-            Text(
-                text = rendered,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = textColor,
+            Box(
+                modifier = Modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                MessageTextContent(
+                    text = if (isUser) msg.text else stripTtsExpressionTags(msg.text),
+                    isUser = isUser,
+                    appendCaret = msg.streaming,
+                    textColor = textColor,
+                    selectionResetKey = selectionResetKey,
                     fontSize = 14.sp,
-                    lineHeight = 20.sp
-                ),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                    lineHeight = 20.sp,
+                    onCopyCode = onCopyCode
+                )
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .clickable(onClick = onClick)
             )
         }
     }
+}
+
+private sealed interface MarkdownBlock {
+    data class Text(val text: String) : MarkdownBlock
+    data class Code(val language: String, val code: String) : MarkdownBlock
+}
+
+@Composable
+private fun MessageTextContent(
+    text: String,
+    isUser: Boolean,
+    appendCaret: Boolean,
+    textColor: Color,
+    selectionResetKey: Int,
+    fontSize: androidx.compose.ui.unit.TextUnit = 15.sp,
+    lineHeight: androidx.compose.ui.unit.TextUnit = 22.sp,
+    onCopyCode: (String) -> Unit
+) {
+    val displayText = remember(text, appendCaret) {
+        if (appendCaret) "$text▍" else text
+    }
+    val blocks = remember(displayText) { parseMarkdownBlocks(displayText) }
+    val textStyle = MaterialTheme.typography.bodyLarge.copy(
+        color = textColor,
+        fontSize = fontSize,
+        lineHeight = lineHeight
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        blocks.forEach { block ->
+            when (block) {
+                is MarkdownBlock.Text -> {
+                    if (block.text.isNotBlank()) {
+                        val rendered = remember(block.text, isUser) {
+                            if (isUser) AnnotatedString(block.text) else renderMarkdown(block.text)
+                        }
+                        NomadSelectionContainer(selectionResetKey = selectionResetKey) {
+                            Text(text = rendered, style = textStyle)
+                        }
+                    }
+                }
+                is MarkdownBlock.Code -> CodeBlock(
+                    language = block.language,
+                    code = block.code,
+                    selectionResetKey = selectionResetKey,
+                    onCopy = { onCopyCode(block.code.removeSuffix("▍")) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodeBlock(
+    language: String,
+    code: String,
+    selectionResetKey: Int,
+    onCopy: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.Black.copy(alpha = 0.22f))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(12.dp))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White.copy(alpha = 0.05f))
+                .padding(start = 10.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = language.ifBlank { "code" },
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = NomadMuted,
+                    fontFamily = FontFamily.Monospace
+                ),
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Default.ContentCopy,
+                contentDescription = stringResource(R.string.chat_copy_code),
+                tint = NomadMist,
+                modifier = Modifier
+                    .size(16.dp)
+                    .clickable(onClick = onCopy)
+            )
+        }
+        NomadSelectionContainer(selectionResetKey = selectionResetKey) {
+            Text(
+                text = code,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = NomadSilver,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                ),
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(10.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun NomadSelectionContainer(
+    selectionResetKey: Int,
+    content: @Composable () -> Unit
+) {
+    val colors = remember {
+        TextSelectionColors(
+            handleColor = Color(0xFF2CE0C5),
+            backgroundColor = Color(0xFF2CE0C5).copy(alpha = 0.38f)
+        )
+    }
+    CompositionLocalProvider(LocalTextSelectionColors provides colors) {
+        key(selectionResetKey) {
+            SelectionContainer(content = content)
+        }
+    }
+}
+
+private fun parseMarkdownBlocks(text: String): List<MarkdownBlock> {
+    if (!text.contains("```")) return listOf(MarkdownBlock.Text(text))
+
+    val blocks = mutableListOf<MarkdownBlock>()
+    val textPart = StringBuilder()
+    val codePart = StringBuilder()
+    var inCode = false
+    var language = ""
+
+    fun flushText() {
+        if (textPart.isNotEmpty()) {
+            blocks += MarkdownBlock.Text(textPart.toString().trimEnd('\n'))
+            textPart.clear()
+        }
+    }
+
+    fun flushCode() {
+        blocks += MarkdownBlock.Code(language.trim(), codePart.toString().trimEnd('\n'))
+        codePart.clear()
+        language = ""
+    }
+
+    text.split('\n').forEach { line ->
+        val trimmed = line.trimStart()
+        if (trimmed.startsWith("```")) {
+            if (inCode) {
+                flushCode()
+                inCode = false
+            } else {
+                flushText()
+                language = trimmed.removePrefix("```").trim()
+                inCode = true
+            }
+        } else if (inCode) {
+            codePart.append(line).append('\n')
+        } else {
+            textPart.append(line).append('\n')
+        }
+    }
+
+    if (inCode) flushCode() else flushText()
+    return blocks.ifEmpty { listOf(MarkdownBlock.Text(text)) }
 }
 
 private val MD_INLINE = Regex(
     "(\\*\\*([^*\\n]+?)\\*\\*)|(__([^_\\n]+?)__)|(\\*([^*\\n]+?)\\*)|(_([^_\\n]+?)_)|(`([^`\\n]+?)`)"
 )
 
-private fun renderMarkdown(text: String, appendCaret: Boolean): AnnotatedString =
+private fun renderMarkdown(text: String): AnnotatedString =
     buildAnnotatedString {
         val lines = text.split('\n')
         lines.forEachIndexed { index, rawLine ->
@@ -1308,7 +1545,6 @@ private fun renderMarkdown(text: String, appendCaret: Boolean): AnnotatedString 
                 else -> appendInlineMd(rawLine)
             }
         }
-        if (appendCaret) append("▍")
     }
 
 private fun AnnotatedString.Builder.appendInlineMd(line: String) {
@@ -1613,6 +1849,7 @@ private fun CircleIconButton(onClick: () -> Unit, content: @Composable () -> Uni
 @Composable
 private fun toolTagLabel(tag: String): String? = when (tag) {
     "menu_translate" -> stringResource(R.string.tool_label_menu_translate)
+    "image_ocr" -> stringResource(R.string.tool_label_image_ocr)
     "cancelled" -> stringResource(R.string.tool_label_cancelled)
     "currency", "currency_loading", "currency_result" ->
         stringResource(R.string.tool_label_currency)
@@ -1841,6 +2078,12 @@ private fun createTempImageUri(context: Context): Uri {
         "${context.packageName}.fileprovider",
         file
     )
+}
+
+private fun Context.copyToClipboard(text: String) {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), text))
+    Toast.makeText(this, getString(R.string.chat_copied), Toast.LENGTH_SHORT).show()
 }
 
 /* ── Translate mode picker sheet ── */

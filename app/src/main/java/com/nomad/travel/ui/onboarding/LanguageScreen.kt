@@ -96,7 +96,7 @@ fun LanguageScreen(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "NOMAD AI",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.displayLarge,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )

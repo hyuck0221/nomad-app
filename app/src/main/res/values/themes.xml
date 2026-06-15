@@ -1,6 +1,7 @@
 <resources>
     <style name="Theme.Nomad" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window_bg</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">false</item>
     </style>
 
     <style name="EdgeToEdgeFloatingDialogTheme" parent="android:Theme.DeviceDefault.Dialog">

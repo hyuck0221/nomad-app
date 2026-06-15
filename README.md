@@ -5,95 +5,68 @@
 <h1 align="center">NOMAD AI</h1>
 
 <p align="center">
-  An Android on-device LLM travel assistant AI.<br>
+  A general-purpose Android on-device LLM app.<br>
+  Chat, write, summarize, translate, inspect image text, and use voice locally.
 </p>
-
-[한국어](README_ko.md)
 
 ---
 
-## Key Features
+## Features
 
 ### Offline AI
 
-Runs AI directly on your Android hardware without an internet connection. Get help from NOMAD AI even on a plane or in a remote area with no connectivity.
+Runs the language model directly on Android hardware. Once the model is installed, everyday chat and writing tasks can work without an internet connection.
 
-### Chat with a Travel-Smart AI
+### General Chat
 
-Talk to NOMAD AI like a friend who knows travel. Ask about local food, get directions advice, or just have a conversation — it works offline, anytime, anywhere.
+Ask about concepts, draft messages, brainstorm ideas, summarize notes, translate text, or get coding help. The assistant is no longer travel-specific and is designed for broad daily use.
 
-### Translate Any Menu Instantly
+### Image Text Understanding
 
-Take a photo of a restaurant menu and NOMAD AI reads it for you. It recognizes text in Korean, English, Chinese, and Japanese, then translates and explains each dish so you can order with confidence.
+Take or attach a photo and NOMAD AI can use recognized text as context. It can summarize, translate, explain, or answer questions about visible text.
 
-### Track Your Spending
+### Voice Conversation
 
-Mention what you spent in conversation ("lunch was 1200 yen") and NOMAD AI automatically logs it. View expense totals organized by currency and category — food, transport, accommodation, and more.
+Talk hands-free with speech input and text-to-speech output. You can use Android system TTS or install the local Supertonic 3 voice model.
 
-### Translate Text
+### Translation and Interpretation
 
-Open the translator from the top bar and translate any text between 40+ languages. Type or use voice input, and watch the translation stream in real time with a glowing aura animation. Tap the result to copy it, or go full-screen (auto-landscape) to show it to someone.
+Use text translation or a face-to-face interpretation screen for multilingual conversations.
 
-### Face-to-Face Interpretation
-z
-Split your screen in half for real-time conversation with someone who speaks a different language. Your side is at the bottom; their side is flipped upside-down at the top — just set the phone between you. Both sides have mic input, and translations appear with a glowing border that fades away like smoke when complete. You can also start interpretation directly from chat — say "I need to talk to a Japanese person" and NOMAD AI will open the interpreter with the right language pair pre-selected.
+### Optional Utility Tags
 
-### Convert Currencies
-
-Ask "how much is 50,000 won in dollars?" and get a live exchange rate, or an offline estimate when you have no connection.
-
-### Know the Local Time
-
-Ask what time it is anywhere, and NOMAD AI checks your device clock to give you the accurate answer.
-
-### Quick-Choice Prompts
-
-When NOMAD AI needs your preference, it shows tappable option chips so you can reply with a single tap instead of typing.
-
----
-
-## Getting Started
-
-1. **Download** the app from the Google Play Store
-2. **Choose your language** — Korean, English, Chinese, or Japanese
-3. **Download a model** — pick one that fits your device:
-   - **Gemma 4 2B** (2.4 GB) — works on most phones with 4 GB+ RAM
-   - **Gemma 4 4B** (3.4 GB) — better quality, needs 8 GB+ RAM
-4. **Start chatting** — that's it, no account needed
-
----
+The chat can still route practical requests such as currency conversion, simple expense logging, or choice chips when the model needs a clear user selection.
 
 ## Supported Languages
 
-| Language | UI | Chat |
-|----------|:--:|:----:|
-| Korean   | O  |  O   |
-| English  | O  |  O   |
-| Chinese  | O  |  O   |
-| Japanese | O  |  O   |
+- Korean
+- English
+- Chinese
+- Japanese
 
-The AI responds in whatever language your app is set to. Menu OCR supports all four scripts.
-
----
+The AI responds in the language selected in the app. OCR supports Korean, English, Chinese, and Japanese text recognition.
 
 ## Privacy
 
-Everything happens on your device:
-- The AI model runs locally — no internet required for conversations
-- Your chat history and expenses are stored only on your phone
-- Camera photos for menu translation are processed on-device
-- The only network calls are for live exchange rates (optional) and model downloads
-
----
+- The AI model runs locally for conversations
+- Chat history is stored locally on the device
+- Camera OCR is processed on-device
+- Network access is used for model downloads, updates, and live currency lookup when selected
 
 ## Requirements
 
-- Android 9 (API 28) or higher
-- 4 GB RAM minimum (6 GB+ recommended)
-- ~2.5 – 3.5 GB storage for the AI model
+- Android 8.0+
+- 4 GB RAM minimum
+- 6 GB+ RAM recommended
+- Around 2.5 to 3.5 GB storage for AI models
 
----
+## Tech Stack
 
-## License
-
-Apache-2.0 license
+- Kotlin
+- Jetpack Compose
+- LiteRT-LM / Gemma on-device models
+- ML Kit Text Recognition
+- Room
+- WorkManager
+- Android TextToSpeech
+- sherpa-onnx / Supertonic 3 local TTS

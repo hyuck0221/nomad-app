@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NOMAD AI</string>
-    <string name="chat_hint">拍菜单、找景点、记账单 — 随时问我</string>
+    <string name="chat_hint">写作、摘要、翻译、代码、图片文字 — 随时问我</string>
     <string name="send">发送</string>
     <string name="camera">相机</string>
     <string name="gallery">相册</string>
@@ -9,37 +9,41 @@
     <string name="model_missing">需要 Gemma 模型文件，请在设置中添加</string>
     <string name="permission_camera_denied">需要相机权限</string>
     <string name="ocr_empty">未在图片中识别到文字</string>
-    <string name="tool_menu_translate">菜单翻译</string>
-    <string name="tool_menu_search">菜单搜索</string>
+    <string name="tool_menu_translate">图片文字</string>
+    <string name="tool_menu_search">图片搜索</string>
     <string name="tool_expense">开支</string>
-    <string name="tool_travel">旅行信息</string>
+    <string name="tool_travel">通用回答</string>
 
     <string name="chat_top_status">离线也可用</string>
-    <string name="chat_empty_title">想去哪里？</string>
-    <string name="chat_empty_body">菜单翻译 · 景点搜索 ·\n汇率/记账 · 当地资讯 —\n尽管问我。</string>
+    <string name="chat_empty_title">需要我帮什么？</string>
+    <string name="chat_empty_body">写作 · 摘要 · 翻译 · 代码 ·\n图片文字分析 —\n直接询问本地模型。</string>
     <string name="chat_input_placeholder">输入消息…</string>
     <string name="chat_image_attached">已附加图片</string>
     <string name="chat_message_sent_at">发送于 %1$s</string>
-    <string name="chat_suggestion_1">📍 帮我规划东京三日游</string>
-    <string name="chat_suggestion_2">💴 今天日元汇率多少？</string>
-    <string name="chat_suggestion_3">🍜 这菜单上都是什么？</string>
-    <string name="chat_suggestion_4">🗺️ 从机场到市区怎么走？</string>
-    <string name="chat_suggestion_5">🏯 京都一日游推荐</string>
-    <string name="chat_suggestion_6">🍣 在日本必吃的美食</string>
-    <string name="chat_suggestion_7">💳 海外刷卡小贴士</string>
-    <string name="chat_suggestion_8">🧳 背包旅行行李清单</string>
+    <string name="chat_copy_message">复制消息</string>
+    <string name="chat_copy_code">复制代码</string>
+    <string name="chat_copied">已复制到剪贴板</string>
+    <string name="chat_suggestion_1">✍️ 把这句话改得更自然</string>
+    <string name="chat_suggestion_2">🧠 用简单方式解释一个难概念</string>
+    <string name="chat_suggestion_3">📄 总结一篇长文</string>
+    <string name="chat_suggestion_4">💻 写一个 Kotlin 代码示例</string>
+    <string name="chat_suggestion_5">🌐 把这句话翻译成英文</string>
+    <string name="chat_suggestion_6">📝 把会议记录整理成任务</string>
+    <string name="chat_suggestion_7">🔍 说明照片里的文字</string>
+    <string name="chat_suggestion_8">💡 提供五个创意</string>
     <string name="chat_settings_desc">设置</string>
-    <string name="tool_label_menu_translate">· 菜单翻译</string>
-    <string name="tool_label_menu_search">· 菜单搜索</string>
+    <string name="tool_label_menu_translate">· 图片文字</string>
+    <string name="tool_label_menu_search">· 图片搜索</string>
     <string name="tool_label_expense">· 已记账</string>
-    <string name="tool_label_travel">· 旅行信息</string>
+    <string name="tool_label_travel">· 通用回答</string>
+    <string name="tool_label_image_ocr">· 图片文字</string>
     <string name="tool_label_chat">· 对话</string>
     <string name="tool_label_cancelled">· 已取消</string>
     <string name="tool_label_currency">· 汇率换算</string>
     <string name="tool_label_ask">· 需要选择</string>
 
-    <string name="menu_view_button">查看完整菜单</string>
-    <string name="menu_view_title">菜单翻译</string>
+    <string name="menu_view_button">查看完整图片</string>
+    <string name="menu_view_title">图片文字</string>
     <string name="currency_choice_title">请选择获取汇率的方式</string>
     <string name="currency_choice_live">调用实时 API</string>
     <string name="currency_choice_estimated">离线估算</string>
@@ -119,7 +123,7 @@
     <string name="settings_camera_instant_preview">拍摄后立即查看回答</string>
     <string name="settings_camera_instant_preview_body">拍照后会立即全屏显示该照片，您可以实时观看回答的生成。</string>
 
-    <string name="language_subtitle">你的旅行 AI 伙伴</string>
+    <string name="language_subtitle">运行在 Android 上的本地 LLM</string>
     <string name="language_select_title">选择语言</string>
     <string name="language_continue">继续</string>
 

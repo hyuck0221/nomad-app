@@ -9,7 +9,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.core.view.WindowCompat
 import com.nomad.travel.R
 import com.nomad.travel.ui.camera.CameraSearchScreen
 import com.nomad.travel.ui.chat.ChatScreen
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        configureEdgeToEdge()
 
         val app = application as NomadApp
         val prefs = app.container.prefs
@@ -273,5 +273,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+}
+
+private fun ComponentActivity.configureEdgeToEdge() {
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    WindowCompat.getInsetsController(window, window.decorView).apply {
+        isAppearanceLightStatusBars = false
+        isAppearanceLightNavigationBars = false
     }
 }

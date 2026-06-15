@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">NOMAD AI</string>
-    <string name="chat_hint">메뉴판 촬영, 여행지 검색, 지출 관리까지 — 무엇이든 물어보세요</string>
+    <string name="chat_hint">글쓰기, 요약, 번역, 코드, 이미지 텍스트까지 — 무엇이든 물어보세요</string>
     <string name="send">보내기</string>
     <string name="camera">카메라</string>
     <string name="gallery">갤러리</string>
@@ -9,37 +9,41 @@
     <string name="model_missing">Gemma 모델 파일이 필요합니다. 설정에서 추가해주세요.</string>
     <string name="permission_camera_denied">카메라 권한이 필요합니다</string>
     <string name="ocr_empty">이미지에서 텍스트를 찾지 못했습니다</string>
-    <string name="tool_menu_translate">메뉴 번역</string>
-    <string name="tool_menu_search">메뉴 검색</string>
+    <string name="tool_menu_translate">이미지 텍스트</string>
+    <string name="tool_menu_search">이미지 검색</string>
     <string name="tool_expense">지출 관리</string>
-    <string name="tool_travel">여행 정보</string>
+    <string name="tool_travel">일반 답변</string>
 
     <string name="chat_top_status">오프라인에서도 사용 가능</string>
-    <string name="chat_empty_title">어디로 떠나시나요?</string>
-    <string name="chat_empty_body">메뉴판 촬영 번역 · 여행지 검색 ·\n환율/지출 관리 · 현지 정보까지\n무엇이든 물어보세요.</string>
+    <string name="chat_empty_title">무엇을 도와드릴까요?</string>
+    <string name="chat_empty_body">글쓰기 · 요약 · 번역 · 코드 ·\n이미지 텍스트 분석까지\n로컬 모델에게 바로 물어보세요.</string>
     <string name="chat_input_placeholder">메시지 입력…</string>
     <string name="chat_image_attached">이미지 첨부됨</string>
     <string name="chat_message_sent_at">전송 %1$s</string>
-    <string name="chat_suggestion_1">📍 도쿄 3일 코스 짜줘</string>
-    <string name="chat_suggestion_2">💴 엔화 환율 알려줘</string>
-    <string name="chat_suggestion_3">🍜 이 메뉴 뭔지 알려줘</string>
-    <string name="chat_suggestion_4">🗺️ 공항에서 시내 가는 법</string>
-    <string name="chat_suggestion_5">🏯 교토 당일치기 추천</string>
-    <string name="chat_suggestion_6">🍣 일본에서 꼭 먹어봐야 할 음식</string>
-    <string name="chat_suggestion_7">💳 해외 카드 결제 팁</string>
-    <string name="chat_suggestion_8">🧳 배낭 여행 짐 리스트</string>
+    <string name="chat_copy_message">메시지 복사</string>
+    <string name="chat_copy_code">코드 복사</string>
+    <string name="chat_copied">클립보드에 복사되었습니다</string>
+    <string name="chat_suggestion_1">✍️ 이 문장을 더 자연스럽게 다듬어줘</string>
+    <string name="chat_suggestion_2">🧠 어려운 개념을 쉽게 설명해줘</string>
+    <string name="chat_suggestion_3">📄 긴 글을 핵심만 요약해줘</string>
+    <string name="chat_suggestion_4">💻 Kotlin 코드 예시를 만들어줘</string>
+    <string name="chat_suggestion_5">🌐 이 문장을 영어로 번역해줘</string>
+    <string name="chat_suggestion_6">📝 회의 메모를 할 일 목록으로 정리해줘</string>
+    <string name="chat_suggestion_7">🔍 사진 속 텍스트를 설명해줘</string>
+    <string name="chat_suggestion_8">💡 아이디어를 5개만 제안해줘</string>
     <string name="chat_settings_desc">설정</string>
-    <string name="tool_label_menu_translate">· 메뉴 번역</string>
-    <string name="tool_label_menu_search">· 메뉴 검색</string>
+    <string name="tool_label_menu_translate">· 이미지 텍스트</string>
+    <string name="tool_label_menu_search">· 이미지 검색</string>
     <string name="tool_label_expense">· 지출 기록됨</string>
-    <string name="tool_label_travel">· 여행 정보</string>
+    <string name="tool_label_travel">· 일반 답변</string>
+    <string name="tool_label_image_ocr">· 이미지 텍스트</string>
     <string name="tool_label_chat">· 대화</string>
     <string name="tool_label_cancelled">· 취소됨</string>
     <string name="tool_label_currency">· 환율 변환</string>
     <string name="tool_label_ask">· 선택 필요</string>
 
-    <string name="menu_view_button">메뉴판 전체 보기</string>
-    <string name="menu_view_title">메뉴판 번역</string>
+    <string name="menu_view_button">이미지 전체 보기</string>
+    <string name="menu_view_title">이미지 텍스트</string>
     <string name="currency_choice_title">환율 조회 방식을 선택하세요</string>
     <string name="currency_choice_live">실시간 API 조회</string>
     <string name="currency_choice_estimated">오프라인 예상치</string>
@@ -119,7 +123,7 @@
     <string name="settings_camera_instant_preview">촬영하고 즉시 답변 보기</string>
     <string name="settings_camera_instant_preview_body">사진을 촬영하면 그 사진이 바로 전체화면으로 열리고, 답변이 생성되는 모습을 실시간으로 볼 수 있어요.</string>
 
-    <string name="language_subtitle">당신의 여행 AI 동반자</string>
+    <string name="language_subtitle">안드로이드에서 실행되는 로컬 LLM</string>
     <string name="language_select_title">언어 선택 / Language</string>
     <string name="language_continue">계속 / Continue</string>
 

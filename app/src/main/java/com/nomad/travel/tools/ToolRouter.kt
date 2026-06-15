@@ -52,7 +52,7 @@ class ToolRouter(
         }
 
         val baseTag = when {
-            ocrBlock != null -> "menu_translate"
+            ocrBlock != null -> "image_ocr"
             looksLikeTimeQuery(turn.userText) -> "local_time"
             else -> "chat"
         }
@@ -86,8 +86,8 @@ class ToolRouter(
         val post = postProcess(lastCumulative)
         // Suppress hallucinated tags in paths where they should never apply:
         //  - local_time: user asked about time
-        //  - menu_translate: OCR block present, this is a menu translation
-        val suppressTools = baseTag == "local_time" || baseTag == "menu_translate"
+        //  - image_ocr: OCR block present, this is image-grounded chat
+        val suppressTools = baseTag == "local_time" || baseTag == "image_ocr"
         val finalTag = if (suppressTools) baseTag else (post.toolTag ?: baseTag)
         emit(
             StreamEvent.Complete(
